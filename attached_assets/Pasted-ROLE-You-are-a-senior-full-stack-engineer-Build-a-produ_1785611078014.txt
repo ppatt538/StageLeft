@@ -1,0 +1,289 @@
+ROLE
+You are a senior full-stack engineer. Build a production-quality MVP web app called **Daydesk** on Replit. Plan briefly (5–8 bullets), then implement. Prefer working software over perfect abstraction.
+
+GOAL (1 sentence)
+Daydesk is an AI-managed temporal desktop: the user chats (or drops a link/image) at the bottom; the AI creates typed “objects” (cards) on a canvas; time buckets are Today / This Week / Archive; search finds everything. Desktop = spatial card canvas. Mobile = simplified stacked blocks that expand.
+
+WHO IT’S FOR
+Single primary user (me) for now — personal capture desk for tasks, reminders, notes, links, and image-derived items. Must work great on desktop and phone in the same responsive web app.
+
+SUCCESS LOOKS LIKE
+When done I can: open the app → see seeded Today cards → type a message in chat → an object appears on Today → check off checklist items → switch Week/Archive tabs → search finds objects → resize to phone width and use expandable blocks → refresh and data persists. AI can be a real OpenAI-compatible call if OPENAI_API_KEY exists, otherwise a solid deterministic mock parser so the app is fully demoable offline.
+
+────────────────────────────────────────
+TECH STACK (use this; do not substitute randomly)
+────────────────────────────────────────
+- Frontend: React + TypeScript + Vite (or Next.js only if you strongly prefer and keep it simple)
+- Styling: Tailwind CSS
+- Backend: Node (Express or Hono) OR Next.js API routes — pick one and stay consistent
+- DB: SQLite via better-sqlite3 or Drizzle/Prisma with SQLite (Replit-friendly). Use JSON columns for flexible payloads.
+- Auth: NONE for MVP (single-user). Add a simple optional APP_PASSWORD gate via env later only if easy — skip if it slows MVP.
+- AI: Optional OpenAI SDK (or fetch to OpenAI-compatible API). Model from env OPENAI_MODEL default gpt-4o-mini. If no key, use mockAI().
+- Uploads: local /uploads or Replit object storage equivalent; serve statically.
+- Date/time: date-fns or luxon; store ISO UTC; bucket by user timezone from env USER_TZ default America/New_York.
+
+Project structure: clean separation client/server (or app/api). README with run instructions and env vars.
+
+────────────────────────────────────────
+PRODUCT CONCEPT
+────────────────────────────────────────
+Not a second brain / infinite whiteboard. Not Notion.
+It is a **temporal desk**:
+- Chat is the primary create path.
+- Objects are first-class cards with types.
+- Automatic aging: Today → Week → Archive (plus Pin that never auto-moves).
+- Desktop uses space; mobile is simplified.
+
+Working UI name: Daydesk
+Tone: calm, premium, airy — warm off-white background #F7F5F2, soft shadows, rounded-2xl cards, Inter or system font. Apple-quality restraint. No clutter, no neon cyberpunk.
+
+────────────────────────────────────────
+DATA MODEL (implement exactly)
+────────────────────────────────────────
+Table: objects
+- id: text primary key (ulid or uuid)
+- type: text enum — checklist | note | reminder | event | link | media | poster
+- title: text not null
+- bucket: text enum — today | week | archive | pinned
+- status: text enum — active | done | snoozed | discarded  (default active)
+- priority: integer default 0
+- tags: JSON array of strings default []
+- layout: JSON { x:number, y:number, w:number, h:number, z:number } nullable (desktop positions; mobile ignores)
+- payload: JSON not null (type-specific)
+- source: JSON { kind: chat|image|url|voice|seed, messageId?:string, rawText?:string, mediaIds?:string[] }
+- search_text: text not null  (flattened plain text for search)
+- ai: JSON { confidence?:number, rationale?:string, needsReview?:boolean } nullable
+- links: JSON array default []  // [{ to, rel }] optional for MVP
+- snooze_until: text ISO nullable
+- created_at: text ISO
+- updated_at: text ISO
+- last_touched_at: text ISO
+- completed_at: text ISO nullable
+
+payload shapes:
+- checklist: { items: [{ id, text, done:boolean }] }
+- note: { markdown: string }
+- reminder: { when: ISO string, end?: ISO, location?: string, url?: string }
+- event: same as reminder + optional { allDay?: boolean }
+- link: { url, title?, summary?, favicon? }
+- media | poster: { imageUrl?, ocrText?, extracted?: { what?, who?, when?, where? }, enrichment?: object }
+
+Table: messages (chat log)
+- id, role (user|assistant|system), content text, created_at
+- optional meta JSON { ops?: AiOp[] }
+
+Table: media (optional but preferred)
+- id, filename, mime, url/path, created_at
+
+Indexes: bucket, status, updated_at; FTS or LIKE search on search_text + title for MVP (SQLite FTS5 if straightforward, else LOWER(search_text) LIKE).
+
+────────────────────────────────────────
+AI OPS PROTOCOL (critical)
+────────────────────────────────────────
+The model does NOT freeform mutate the DB. Chat endpoint:
+1) Accept user text + optional attachment metadata
+2) Build messages with system prompt
+3) Model must return ONLY valid JSON:
+
+{
+  "assistantMessage": "short human confirmation",
+  "ops": [
+    {
+      "op": "create_object" | "update_object" | "complete_item" | "move_bucket" | "pin" | "set_status",
+      ...op-specific fields
+    }
+  ]
+}
+
+create_object fields: type, title, bucket?, payload, tags?, priority?, ai?
+update_object: id, patch { title?, payload?, tags?, ... }
+complete_item: objectId, itemId, done
+move_bucket: id, bucket
+pin: id  (sets bucket pinned)
+set_status: id, status
+
+Server validates ops, applies in a transaction, rebuilds search_text, returns { message, objectsChanged }.
+
+System prompt rules for the model:
+- Prefer one primary object per user message unless clearly multiple intents.
+- "things to do today: a, b, c" → checklist on today.
+- ISO dates when user mentions times; use USER_TZ for relative dates (today, tomorrow, next Friday).
+- If image/OCR provided, prefer poster/media + reminder/event if a date is found; set needsReview true if uncertain.
+- Never delete; use discarded or archive.
+- Keep assistantMessage ≤ 2 sentences.
+- If unclear, return ops:[] and ask one clarification in assistantMessage.
+
+MOCK AI (required when no API key):
+Parse heuristically:
+- If text matches task list patterns (commas, newlines, "todo", "today") → checklist
+- If URL detected → link object (try fetch title if easy, else url as title)
+- If contains "remind" or clear datetime → reminder
+- Else → note
+Always return proper ops JSON.
+
+────────────────────────────────────────
+TIME / ROLLOVER RULES
+────────────────────────────────────────
+Implement POST /api/rollover (also run on server start once per local calendar day and on GET /api/objects if last_rollover_date < today in USER_TZ):
+
+Rules:
+1) pinned: never auto-move
+2) status done → bucket archive (if not pinned); set completed_at if missing
+3) incomplete objects in today with created/last_touched before today's local date → move to week (carry forward; keep checklist progress)
+4) incomplete week items with last_touched_at older than 7 local days → archive with status active still OR status snoozed optional; use status "active" and bucket archive is enough; optionally tag "stale"
+5) reminders/events with when < start of today and still active → stay visible in today or week if overdue (show overdue badge in UI); do not hide
+
+Do NOT hard-delete on clear. Today tab is a filter on bucket=today (and overdue smart bits if easy).
+
+────────────────────────────────────────
+API ROUTES
+────────────────────────────────────────
+- GET /api/health
+- GET /api/objects?bucket=today|week|archive|pinned|all&q=
+- GET /api/objects/:id
+- PATCH /api/objects/:id   (manual edits: title, payload, layout, bucket, status, priority, tags)
+- DELETE /api/objects/:id  (soft: status discarded)
+- POST /api/chat   body: { message: string, mediaIds?: string[] }
+- POST /api/upload  multipart image
+- POST /api/rollover
+- GET /api/messages?limit=50
+
+Validate inputs. Return JSON errors { error: string }.
+
+────────────────────────────────────────
+UI / UX
+────────────────────────────────────────
+Single page app shell:
+
+TOP
+- Wordmark "Daydesk"
+- Desktop: wide search input (debounced 200ms) querying title+search_text
+- Mobile: search icon → expands or navigates to search overlay
+- Optional subtle timezone label
+
+CENTER
+Desktop (md+):
+- Spatial canvas area, min-height calc(100vh - top - bottom)
+- Cards absolutely or grid-positioned using layout.x/y if set; otherwise auto masonry/grid pack
+- Card chrome by type (icon + accent):
+  - checklist: items with working checkboxes (PATCH on toggle, update last_touched)
+  - note: markdown-ish plain text
+  - reminder/event: when badge, overdue style if past
+  - link: favicon/url + summary
+  - media/poster: image thumb + title + extracted when
+- Click card → side drawer or modal with full detail + edit title + pin/move/archive actions
+- AI-just-created: brief blue ring highlight 3s
+- Drag optional for MVP; if easy, drag to update layout via PATCH. If drag is hard, skip and use CSS grid only.
+
+Mobile (< md):
+- NO free canvas
+- Vertical stack of full-width blocks
+- Collapsed row: icon, title, one-line subtitle (e.g. "2 of 3 open"), chevron
+- Tap expands inline content (checklist items, image, etc.)
+- Large tap targets (~44px+)
+
+TABS
+- Today | This Week | Archive
+- Include Pinned as 4th tab OR filter chip — implement Pinned tab
+- Counts optional badges
+
+BOTTOM (fixed)
+- Chat composer full width: textarea/input, paperclip upload, send
+- On send: optimistic user bubble or toast; show assistantMessage toast/pill: e.g. "Created checklist (3 items) on Today."
+- Undo last AI action: keep last ops batch in memory/session and button "Undo" for 30s (reverts creates by discarded, reverts patches if you stored before) — implement simple version: undo last create_object ids
+
+EMPTY STATES
+- Friendly empty Today: "Nothing on your desk. Tell Daydesk what to capture."
+
+SEED DATA
+On first boot if DB empty, seed 4–6 realistic objects on today/week including one checklist "Today's tasks", one poster/event, one link, one note — so UI is demoable immediately.
+
+RESPONSIVE
+- One codebase, Tailwind breakpoints
+- Safe areas for mobile bottom composer (pb-safe)
+
+────────────────────────────────────────
+DESIGN TOKENS
+────────────────────────────────────────
+- bg: #F7F5F2
+- surface: #FFFFFF
+- text: #1C1917
+- muted: #78716C
+- accent: #2563EB (sparingly)
+- success: #16A34A
+- danger/overdue: #DC2626
+- radius: 16px cards
+- shadow: soft sm/md
+- font: Inter or ui-sans-serif
+
+────────────────────────────────────────
+ENV VARS (document in README)
+────────────────────────────────────────
+PORT
+USER_TZ=America/New_York
+OPENAI_API_KEY= (optional)
+OPENAI_BASE_URL= (optional, default OpenAI)
+OPENAI_MODEL=gpt-4o-mini
+DATABASE_PATH=./data/daydesk.db
+
+────────────────────────────────────────
+MVP MUST-HAVES (build these)
+────────────────────────────────────────
+1) SQLite schema + migrations/bootstrap
+2) Objects CRUD + search + buckets + pin
+3) Rollover job/rules
+4) Chat → ops → apply (+ mock AI)
+5) Desktop card UI + mobile expandable blocks
+6) Checklist toggle persistence
+7) Image upload stored and attachable to chat (even if mock AI only creates media object with filename)
+8) Seed data + README
+9) Works on phone width and desktop width
+
+NICE-TO-HAVE (only if MVP done and stable)
+- Real vision/OCR for images
+- Link unfurl (fetch OG title)
+- Drag layout on desktop
+- Markdown rendering
+- PWA manifest
+
+OUT OF SCOPE (do not build)
+- Multi-user auth/oauth
+- Infinite zoom whiteboard / bezier connections
+- Native iOS app
+- Calendar sync
+- Multiplayer
+- Graph database
+- OpenClaw/Hermes integration
+- Complex agent frameworks
+
+────────────────────────────────────────
+IMPLEMENTATION ORDER (follow strictly; checkpoint after each)
+────────────────────────────────────────
+Phase 1: Scaffold app, Tailwind, shell layout (top search, tabs, canvas region, bottom chat) responsive with hardcoded sample cards (no DB yet).
+Phase 2: SQLite + objects API + seed + wire UI to API + checklist PATCH + tabs + search.
+Phase 3: Chat API + mock AI ops + apply + toasts + undo last create.
+Phase 4: Upload + media objects; optional OpenAI path if key present.
+Phase 5: Rollover endpoint + auto-run; polish empty states, overdue badges, mobile expand/collapse; README.
+
+After each phase: run the app, fix errors, summarize what works.
+
+────────────────────────────────────────
+QUALITY BAR
+────────────────────────────────────────
+- TypeScript types for Object, Payload unions, AiOp
+- No crash on empty DB
+- Loading and error states in UI
+- Accessible buttons/labels basics
+- Do not commit secrets
+- Keep code readable; comment only where non-obvious (rollover, ops apply)
+
+────────────────────────────────────────
+OUTPUT / STOP RULES
+────────────────────────────────────────
+1) Restate the plan in 5–8 bullets.
+2) Implement Phase 1 fully and run it.
+3) Continue through phases until MVP must-haves work end-to-end.
+4) Finish with: how to run, env vars, what to click to demo, and any limitations.
+5) If blocked, ask ONE question only; otherwise decide sensibly and proceed.
+
+Start now with Phase 1.
