@@ -11,6 +11,7 @@ import { ChatComposer } from '../components/ChatComposer';
 import { CardGrid } from '../components/CardGrid';
 import { CardList } from '../components/CardList';
 import { CardDetail } from '../components/CardDetail';
+import { ChatHistory } from '../components/ChatHistory';
 import { ObjectBucket, DaydeskObject } from '../types/daydesk';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -56,9 +57,10 @@ export function DeskPage() {
   const [activeTab, setActiveTab] = useState<ObjectBucket>('today');
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch all (for counts)
+  // Fetch all (for counts + history card chips)
   const { data: allObjects = [] } = useListObjects(
     { bucket: 'all' },
     { query: { queryKey: getListObjectsQueryKey({ bucket: 'all' }) } },
@@ -110,12 +112,30 @@ export function DeskPage() {
     setSearchQuery('');
   }, []);
 
+  // Open card from history chip: close history, find card, open detail
+  const handleOpenCardFromHistory = useCallback((id: string) => {
+    setHistoryOpen(false);
+    // If the card is in the current tab's objects, select it directly.
+    // Otherwise switch to 'all' isn't a bucket — just select by ID and let
+    // CardDetail fetch it. We store the id and find it in allObjects.
+    setSelectedCardId(id);
+  }, []);
+
   const filteredCards = tabObjects as DaydeskObject[];
-  const selectedCard = filteredCards.find((c) => c.id === selectedCardId) ?? null;
+  // selectedCard: look in tabObjects first, then allObjects (for cross-bucket history chip clicks)
+  const allObjectsTyped = allObjects as DaydeskObject[];
+  const selectedCard =
+    filteredCards.find((c) => c.id === selectedCardId) ??
+    allObjectsTyped.find((c) => c.id === selectedCardId) ??
+    null;
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground flex flex-col font-sans">
-      <TopBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+      <TopBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onHistoryOpen={() => setHistoryOpen(true)}
+      />
 
       <main className="flex-1 flex flex-col w-full max-w-[1400px] mx-auto pb-32">
         <TabBar activeTab={activeTab} onTabChange={handleTabChange} counts={counts} />
@@ -167,12 +187,19 @@ export function DeskPage() {
             { onSuccess: invalidateAll },
           );
         }}
-      onDeleteCard={(id) => {
+        onDeleteCard={(id) => {
           updateObject.mutate(
             { id, data: { status: 'discarded' } },
             { onSuccess: () => { invalidateAll(); setSelectedCardId(null); } },
           );
         }}
+      />
+
+      <ChatHistory
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        allObjects={allObjectsTyped}
+        onOpenCard={handleOpenCardFromHistory}
       />
     </div>
   );

@@ -274,7 +274,8 @@ export const SendChatResponse = zod.object({
 export const listMessagesQueryLimitDefault = 50;
 
 export const ListMessagesQueryParams = zod.object({
-  "limit": zod.coerce.number().default(listMessagesQueryLimitDefault)
+  "limit": zod.coerce.number().default(listMessagesQueryLimitDefault),
+  "before": zod.string().optional()
 })
 
 export const ListMessagesResponseItem = zod.object({

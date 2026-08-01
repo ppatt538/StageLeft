@@ -20,9 +20,15 @@ router.get("/messages", async (req, res): Promise<void> => {
   }
 
   const limit = query.data.limit ?? 50;
-  const rows = db
-    .prepare("SELECT * FROM messages ORDER BY created_at DESC LIMIT @limit")
-    .all({ limit }) as MessageRow[];
+  const before = query.data.before;
+
+  const rows = before
+    ? (db
+        .prepare("SELECT * FROM messages WHERE created_at < @before ORDER BY created_at DESC LIMIT @limit")
+        .all({ before, limit }) as MessageRow[])
+    : (db
+        .prepare("SELECT * FROM messages ORDER BY created_at DESC LIMIT @limit")
+        .all({ limit }) as MessageRow[]);
 
   const messages = rows.reverse().map((row) => ({
     ...row,

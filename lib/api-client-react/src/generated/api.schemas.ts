@@ -182,5 +182,6 @@ export const ListObjectsBucket = {
 
 export type ListMessagesParams = {
 limit?: number;
+before?: string;
 };
 

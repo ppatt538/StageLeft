@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, SearchIcon, X } from 'lucide-react';
+import { Search, SearchIcon, X, Clock } from 'lucide-react';
 
 interface TopBarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  onHistoryOpen?: () => void;
 }
 
-export function TopBar({ searchQuery, onSearchChange }: TopBarProps) {
+export function TopBar({ searchQuery, onSearchChange, onHistoryOpen }: TopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,7 +73,7 @@ export function TopBar({ searchQuery, onSearchChange }: TopBarProps) {
           </div>
 
           {/* Mobile search toggle */}
-          <div className="flex md:hidden flex-1 justify-end">
+          <div className="flex md:hidden flex-1 justify-end items-center gap-1">
             {searchOpen ? (
               <div className="relative w-full flex items-center gap-2">
                 <div className="relative flex-1">
@@ -96,20 +97,44 @@ export function TopBar({ searchQuery, onSearchChange }: TopBarProps) {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="p-2 -mr-2 text-muted-foreground hover:text-foreground"
-                data-testid="button-open-search"
-              >
-                <SearchIcon className="h-5 w-5" />
-              </button>
+              <>
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="p-2 text-muted-foreground hover:text-foreground"
+                  data-testid="button-open-search"
+                >
+                  <SearchIcon className="h-5 w-5" />
+                </button>
+                {onHistoryOpen && (
+                  <button
+                    onClick={onHistoryOpen}
+                    className="p-2 -mr-2 text-muted-foreground hover:text-foreground"
+                    title="Conversation history"
+                    data-testid="button-history"
+                  >
+                    <Clock className="h-5 w-5" />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
 
         {!searchOpen && (
-          <div className="text-xs font-medium text-muted-foreground shrink-0 hidden md:block">
-            America/New_York • {formattedTime}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            <span className="text-xs font-medium text-muted-foreground">
+              America/New_York • {formattedTime}
+            </span>
+            {onHistoryOpen && (
+              <button
+                onClick={onHistoryOpen}
+                className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Conversation history"
+                data-testid="button-history"
+              >
+                <Clock className="h-4 w-4" />
+              </button>
+            )}
           </div>
         )}
       </div>
