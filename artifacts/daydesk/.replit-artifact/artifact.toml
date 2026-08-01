@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Daydesk"
+description = "Daydesk is a personal AI-managed temporal desktop. The user chats at the bottom; the AI creates typed cards (notes, checklists, reminders, links, media) organized into Today / This Week / Archive / Pinned time buckets. Desktop shows a spatial card grid; mobile shows expandable stacked blocks."
+version = "1.0.0"
+id = "artifacts/daydesk"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23869
+
+[services.development]
+run = "pnpm --filter @workspace/daydesk run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/daydesk", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/daydesk/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23869"
+BASE_PATH = "/"

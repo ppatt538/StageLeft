@@ -3,13 +3,24 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Daydesk API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: objects
+    description: Daydesk object (card) operations
+  - name: chat
+    description: AI chat operations
+  - name: messages
+    description: Chat message history
+  - name: upload
+    description: File upload operations
+  - name: rollover
+    description: Time bucket rollover
+
 paths:
   /healthz:
     get:
@@ -24,6 +35,193 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /objects:
+    get:
+      operationId: listObjects
+      tags: [objects]
+      summary: List objects
+      description: List objects filtered by bucket and/or search query
+      parameters:
+        - name: bucket
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [today, week, archive, pinned, all]
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DaydeskObject"
+
+  /objects/{id}:
+    get:
+      operationId: getObject
+      tags: [objects]
+      summary: Get a single object
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DaydeskObject"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+    patch:
+      operationId: updateObject
+      tags: [objects]
+      summary: Update an object
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ObjectUpdate"
+      responses:
+        "200":
+          description: Updated object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DaydeskObject"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+    delete:
+      operationId: deleteObject
+      tags: [objects]
+      summary: Soft-delete an object (sets status to discarded)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted (discarded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DaydeskObject"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /chat:
+    post:
+      operationId: sendChat
+      tags: [chat]
+      summary: Send a chat message to the AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatInput"
+      responses:
+        "200":
+          description: AI response with ops applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /messages:
+    get:
+      operationId: listMessages
+      tags: [messages]
+      summary: Get recent chat messages
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+            default: 50
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+
+  /upload:
+    post:
+      operationId: uploadMedia
+      tags: [upload]
+      summary: Upload an image or file (multipart/form-data)
+      responses:
+        "200":
+          description: Upload result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /rollover:
+    post:
+      operationId: runRollover
+      tags: [rollover]
+      summary: Run bucket rollover rules
+      responses:
+        "200":
+          description: Rollover result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolloverResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +232,235 @@ components:
       required:
         - status
 
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    ObjectType:
+      type: string
+      enum: [checklist, note, reminder, event, link, media, poster]
+
+    ObjectBucket:
+      type: string
+      enum: [today, week, archive, pinned]
+
+    ObjectStatus:
+      type: string
+      enum: [active, done, snoozed, discarded]
+
+    ObjectLayout:
+      type: object
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        w:
+          type: number
+        h:
+          type: number
+        z:
+          type: number
+      required: [x, y, w, h, z]
+
+    ObjectSource:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [chat, image, url, voice, seed]
+        messageId:
+          type: ["string", "null"]
+        rawText:
+          type: ["string", "null"]
+        mediaIds:
+          type: array
+          items:
+            type: string
+      required: [kind]
+
+    ObjectAi:
+      type: object
+      properties:
+        confidence:
+          type: ["number", "null"]
+        rationale:
+          type: ["string", "null"]
+        needsReview:
+          type: ["boolean", "null"]
+
+    JsonPayload:
+      type: object
+      additionalProperties: {}
+
+    JsonLink:
+      type: object
+      additionalProperties: {}
+
+    DaydeskObject:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          $ref: "#/components/schemas/ObjectType"
+        title:
+          type: string
+        bucket:
+          $ref: "#/components/schemas/ObjectBucket"
+        status:
+          $ref: "#/components/schemas/ObjectStatus"
+        priority:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+        layout:
+          oneOf:
+            - $ref: "#/components/schemas/ObjectLayout"
+            - type: "null"
+        payload:
+          $ref: "#/components/schemas/JsonPayload"
+        source:
+          $ref: "#/components/schemas/ObjectSource"
+        search_text:
+          type: string
+        ai:
+          oneOf:
+            - $ref: "#/components/schemas/ObjectAi"
+            - type: "null"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/JsonLink"
+        snooze_until:
+          type: ["string", "null"]
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        last_touched_at:
+          type: string
+        completed_at:
+          type: ["string", "null"]
+      required:
+        - id
+        - type
+        - title
+        - bucket
+        - status
+        - priority
+        - tags
+        - payload
+        - source
+        - search_text
+        - links
+        - created_at
+        - updated_at
+        - last_touched_at
+
+    ObjectUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        bucket:
+          $ref: "#/components/schemas/ObjectBucket"
+        status:
+          $ref: "#/components/schemas/ObjectStatus"
+        priority:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+        layout:
+          oneOf:
+            - $ref: "#/components/schemas/ObjectLayout"
+            - type: "null"
+        payload:
+          $ref: "#/components/schemas/JsonPayload"
+        snooze_until:
+          type: ["string", "null"]
+
+    ChatInput:
+      type: object
+      properties:
+        message:
+          type: string
+        mediaIds:
+          type: array
+          items:
+            type: string
+      required:
+        - message
+
+    ChatMeta:
+      type: object
+      additionalProperties: {}
+
+    ChatResponse:
+      type: object
+      properties:
+        message:
+          $ref: "#/components/schemas/ChatMessage"
+        objectsChanged:
+          type: array
+          items:
+            $ref: "#/components/schemas/DaydeskObject"
+      required:
+        - message
+        - objectsChanged
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        created_at:
+          type: string
+        meta:
+          $ref: "#/components/schemas/ChatMeta"
+      required:
+        - id
+        - role
+        - content
+        - created_at
+
+    UploadResult:
+      type: object
+      properties:
+        id:
+          type: string
+        filename:
+          type: string
+        url:
+          type: string
+        mime:
+          type: string
+      required:
+        - id
+        - filename
+        - url
+        - mime
+
+    RolloverResult:
+      type: object
+      properties:
+        moved:
+          type: number
+        details:
+          type: string
+      required:
+        - moved
+        - details
