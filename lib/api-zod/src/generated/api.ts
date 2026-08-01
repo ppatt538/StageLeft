@@ -263,7 +263,8 @@ export const SendChatResponse = zod.object({
   "updated_at": zod.string(),
   "last_touched_at": zod.string(),
   "completed_at": zod.string().nullish()
-}))
+})),
+  "undoMessageId": zod.string().optional()
 })
 
 

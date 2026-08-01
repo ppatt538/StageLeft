@@ -14,6 +14,44 @@ import { CardDetail } from '../components/CardDetail';
 import { ObjectBucket, DaydeskObject } from '../types/daydesk';
 import { Skeleton } from '@/components/ui/skeleton';
 
+// ─── Per-bucket empty states ──────────────────────────────────────────────────
+
+const EMPTY_STATES: Record<ObjectBucket, { emoji: string; heading: string; sub: string }> = {
+  today: {
+    emoji: '☀️',
+    heading: 'Your day is a blank slate',
+    sub: 'Tell Daydesk what to capture — a task, note, reminder, or link.',
+  },
+  week: {
+    emoji: '📅',
+    heading: 'Nothing planned this week',
+    sub: 'Add cards to your week to keep longer-horizon items in view.',
+  },
+  archive: {
+    emoji: '🗂️',
+    heading: 'Archive is empty',
+    sub: 'Older cards roll here automatically each day.',
+  },
+  pinned: {
+    emoji: '📌',
+    heading: 'Nothing pinned yet',
+    sub: 'Pin important cards to keep them always in reach.',
+  },
+};
+
+function BucketEmptyState({ bucket }: { bucket: ObjectBucket }) {
+  const state = EMPTY_STATES[bucket];
+  return (
+    <div className="h-full flex flex-col items-center justify-center text-center mt-20 select-none">
+      <div className="text-5xl mb-4 leading-none">{state.emoji}</div>
+      <h3 className="font-semibold text-lg text-foreground mb-1.5">{state.heading}</h3>
+      <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">{state.sub}</p>
+    </div>
+  );
+}
+
+// ─── DeskPage ─────────────────────────────────────────────────────────────────
+
 export function DeskPage() {
   const [activeTab, setActiveTab] = useState<ObjectBucket>('today');
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -66,6 +104,12 @@ export function DeskPage() {
     [updateObject, invalidateAll],
   );
 
+  // Clear search when the user switches tabs
+  const handleTabChange = useCallback((tab: ObjectBucket) => {
+    setActiveTab(tab);
+    setSearchQuery('');
+  }, []);
+
   const filteredCards = tabObjects as DaydeskObject[];
   const selectedCard = filteredCards.find((c) => c.id === selectedCardId) ?? null;
 
@@ -74,7 +118,7 @@ export function DeskPage() {
       <TopBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       <main className="flex-1 flex flex-col w-full max-w-[1400px] mx-auto pb-32">
-        <TabBar activeTab={activeTab} onTabChange={setActiveTab} counts={counts} />
+        <TabBar activeTab={activeTab} onTabChange={handleTabChange} counts={counts} />
 
         <div className="flex-1 px-4 md:px-6 py-4">
           {isLoading ? (
@@ -84,23 +128,7 @@ export function DeskPage() {
               ))}
             </div>
           ) : filteredCards.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center mt-20 opacity-60">
-              <div className="w-16 h-16 rounded-2xl bg-card border border-border shadow-sm flex items-center justify-center mb-4">
-                <svg
-                  className="w-8 h-8 text-muted-foreground opacity-50"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <h3 className="font-medium text-lg text-foreground mb-1">Nothing on your desk</h3>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Tell Daydesk what to capture.
-              </p>
-            </div>
+            <BucketEmptyState bucket={activeTab} />
           ) : (
             <>
               <div className="hidden md:block">

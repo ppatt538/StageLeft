@@ -68,6 +68,15 @@ CREATE TABLE IF NOT EXISTS rollover_state (
   id           INTEGER PRIMARY KEY CHECK (id = 1),
   last_date    TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS undo_log (
+  id          TEXT PRIMARY KEY,
+  message_id  TEXT NOT NULL,
+  object_id   TEXT NOT NULL,
+  action      TEXT NOT NULL,
+  before_row  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_undo_log_message_id ON undo_log(message_id);
 `);
 
 // ─── Types ───────────────────────────────────────────────────────────────────

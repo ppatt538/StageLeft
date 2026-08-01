@@ -149,6 +149,7 @@ export interface ChatMessage {
 export interface ChatResponse {
   message: ChatMessage;
   objectsChanged: DaydeskObject[];
+  undoMessageId?: string;
 }
 
 export interface UploadResult {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Paperclip, ArrowUp, X, ImageIcon, Loader2 } from 'lucide-react';
+import { Paperclip, ArrowUp, X, ImageIcon, Loader2, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSendChat } from '@workspace/api-client-react';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,8 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
   const [attachments, setAttachments] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [undoVisible, setUndoVisible] = useState(false);
+  const [undoMessageId, setUndoMessageId] = useState<string | null>(null);
+  const [undoing, setUndoing] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,10 +46,8 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
-    // Reset so the same file can be re-selected
     e.target.value = '';
 
-    // Filter to images only (belt-and-suspenders alongside accept attr)
     const images = files.filter((f) => f.type.startsWith('image/'));
     if (images.length < files.length) {
       toast({ description: 'Only image files are supported.', duration: 3000 });
@@ -72,8 +72,6 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
 
     setAttachments((prev) => [...prev, ...uploaded]);
     setUploading(false);
-
-    // Auto-focus textarea after attaching
     textareaRef.current?.focus();
   };
 
@@ -102,10 +100,15 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
         onSuccess: (response) => {
           const changed = response.objectsChanged ?? [];
 
-          if (changed.length > 0) {
-            setUndoVisible(true);
+          if (changed.length > 0 && response.undoMessageId) {
+            // Dismiss any previous undo bar first
             if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-            undoTimerRef.current = setTimeout(() => setUndoVisible(false), 30_000);
+            setUndoMessageId(response.undoMessageId);
+            setUndoVisible(true);
+            undoTimerRef.current = setTimeout(() => {
+              setUndoVisible(false);
+              setUndoMessageId(null);
+            }, 30_000);
           }
 
           toast({ description: response.message?.content ?? 'Done.', duration: 3000 });
@@ -116,6 +119,26 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
         },
       },
     );
+  };
+
+  // ─── Undo ──────────────────────────────────────────────────────────────────
+
+  const handleUndo = async () => {
+    if (!undoMessageId || undoing) return;
+    setUndoing(true);
+    try {
+      const res = await fetch(`/api/undo/${encodeURIComponent(undoMessageId)}`, { method: 'POST' });
+      if (!res.ok) throw new Error(`Undo failed: ${res.status}`);
+      toast({ description: 'Changes reversed.', duration: 3000 });
+      setUndoVisible(false);
+      setUndoMessageId(null);
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      onCardCreated?.(); // Refresh the card list
+    } catch {
+      toast({ description: 'Could not undo. Try again.', variant: 'destructive', duration: 3000 });
+    } finally {
+      setUndoing(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -131,7 +154,6 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files);
     if (!files.length) return;
-    // Synthesise a fake change event
     const dt = new DataTransfer();
     files.forEach((f) => dt.items.add(f));
     const fakeInput = document.createElement('input');
@@ -151,14 +173,29 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
     >
       {/* Undo bar */}
       {undoVisible && (
-        <div className="flex items-center justify-center gap-3 py-2 text-sm text-muted-foreground border-b border-border/40">
-          <span>Card created</span>
+        <div className="flex items-center justify-center gap-3 py-2 text-sm text-muted-foreground border-b border-border/40 bg-muted/30">
+          <span className="text-foreground/70">Card created</span>
           <button
-            className="text-primary font-medium hover:underline"
-            onClick={() => setUndoVisible(false)}
+            className={cn(
+              "inline-flex items-center gap-1.5 font-medium text-primary hover:underline transition-opacity",
+              undoing && "opacity-50 pointer-events-none"
+            )}
+            onClick={handleUndo}
             data-testid="button-undo"
           >
+            {undoing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RotateCcw className="h-3.5 w-3.5" />
+            )}
             Undo
+          </button>
+          <button
+            className="text-muted-foreground/60 hover:text-muted-foreground ml-1"
+            onClick={() => setUndoVisible(false)}
+            aria-label="Dismiss"
+          >
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
@@ -178,7 +215,6 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
                     </div>
                   )}
                 </div>
-                {/* Remove button */}
                 <button
                   onClick={() => removeAttachment(att.id)}
                   className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-foreground text-background flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
@@ -186,7 +222,6 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
                 >
                   <X className="w-3 h-3" />
                 </button>
-                {/* Filename tooltip */}
                 <p className="text-[10px] text-muted-foreground mt-1 max-w-[64px] truncate text-center">{att.filename}</p>
               </div>
             ))}

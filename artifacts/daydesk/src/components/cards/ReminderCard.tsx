@@ -13,11 +13,15 @@ interface ReminderCardProps {
 }
 
 export function ReminderCard({ card, onClick, className, isMobileExpanded }: ReminderCardProps) {
-  const when = card.payload.when as string;
+  // Reminders use `when`; events use `start`/`end`
+  const isEvent = card.type === 'event';
+  const when = (isEvent ? card.payload.start : card.payload.when) as string | undefined;
+  const whenEnd = (isEvent ? card.payload.end : undefined) as string | undefined;
   const location = card.payload.location as string;
-  
+
   const date = when ? new Date(when) : null;
-  const isOverdue = date ? date < new Date() : false;
+  const now = new Date();
+  const isOverdue = date ? (isEvent ? (whenEnd ? new Date(whenEnd) < now : date < now) : date < now) : false;
 
   const formattedDate = date ? new Intl.DateTimeFormat('en-US', {
     weekday: 'short',

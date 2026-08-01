@@ -37,7 +37,7 @@ PAYLOAD SHAPES by type:
 - reminder:  { "when": "<ISO-8601>", "location": "optional" }
 - event:     { "start": "<ISO-8601>", "end": "<ISO-8601>", "location": "optional" }
 - link:      { "url": "https://...", "title": "...", "summary": "optional" }
-- media:     { "imageUrl": null, "ocrText": "optional caption" }
+- media:     { "imageUrl": "<url or null>", "ocrText": "optional caption" }
 
 RULES:
 - Default bucket is "today" unless the user says "this week" → "week".
@@ -50,8 +50,26 @@ RULES:
 
 // ─── Mock AI (fallback when OpenAI not available) ─────────────────────────────
 
-function mockAI(message: string): { message: string; ops: unknown[] } {
+function mockAI(message: string, firstMediaUrl?: string): { message: string; ops: unknown[] } {
   const lower = message.toLowerCase();
+
+  // If images were attached, create a media card
+  if (firstMediaUrl) {
+    return {
+      message: "Saved your image as a media card.",
+      ops: [
+        {
+          op: "create",
+          type: "media",
+          title: message.replace(/attach image:/i, "").trim() || "Captured image",
+          bucket: "today",
+          priority: 0,
+          tags: [],
+          payload: { imageUrl: firstMediaUrl, ocrText: "" },
+        },
+      ],
+    };
+  }
 
   // Detect checklist intent
   if (lower.includes("todo") || lower.includes("task") || lower.includes("list")) {
@@ -137,13 +155,25 @@ function mockAI(message: string): { message: string; ops: unknown[] } {
   };
 }
 
-// ─── Apply ops to DB ──────────────────────────────────────────────────────────
+// ─── Apply ops to DB (with undo logging) ─────────────────────────────────────
 
 type Op =
   | { op: "create"; type: string; title: string; bucket: string; priority: number; tags: string[]; payload: Record<string, unknown> }
   | { op: "update"; id: string; title?: string; bucket?: string; status?: string; priority?: number; payload?: Record<string, unknown> }
   | { op: "delete"; id: string }
   | { op: "move"; id: string; bucket: string };
+
+function logUndo(msgId: string, objectId: string, action: string, beforeRow: ObjectRow | null) {
+  db.prepare(
+    "INSERT INTO undo_log (id, message_id, object_id, action, before_row) VALUES (@id, @msgId, @objectId, @action, @beforeRow)",
+  ).run({
+    id: nanoid(),
+    msgId,
+    objectId,
+    action,
+    beforeRow: beforeRow ? JSON.stringify(beforeRow) : null,
+  });
+}
 
 function applyOps(ops: Op[], messageId: string): ObjectRow[] {
   const changed: ObjectRow[] = [];
@@ -172,9 +202,13 @@ function applyOps(ops: Op[], messageId: string): ObjectRow[] {
         });
         const row = db.prepare("SELECT * FROM objects WHERE id=@id").get({ id }) as ObjectRow;
         changed.push(row);
+        // Undo: created → can be discarded
+        logUndo(messageId, id, "create", null);
       } else if (op.op === "update") {
         const existing = db.prepare("SELECT * FROM objects WHERE id=@id").get({ id: op.id }) as ObjectRow | undefined;
         if (!existing) continue;
+        // Log before state for undo
+        logUndo(messageId, op.id, "update", existing);
         const newPayload = op.payload
           ? { ...JSON.parse(existing.payload), ...op.payload }
           : JSON.parse(existing.payload);
@@ -200,10 +234,14 @@ function applyOps(ops: Op[], messageId: string): ObjectRow[] {
         const row = db.prepare("SELECT * FROM objects WHERE id=@id").get({ id: op.id }) as ObjectRow;
         changed.push(row);
       } else if (op.op === "delete") {
+        const existing = db.prepare("SELECT * FROM objects WHERE id=@id").get({ id: op.id }) as ObjectRow | undefined;
+        if (existing) logUndo(messageId, op.id, "delete", existing);
         db.prepare("UPDATE objects SET status='discarded', updated_at=@now WHERE id=@id").run({ id: op.id, now });
         const row = db.prepare("SELECT * FROM objects WHERE id=@id").get({ id: op.id }) as ObjectRow;
         if (row) changed.push(row);
       } else if (op.op === "move") {
+        const existing = db.prepare("SELECT * FROM objects WHERE id=@id").get({ id: op.id }) as ObjectRow | undefined;
+        if (existing) logUndo(messageId, op.id, "move", existing);
         db.prepare("UPDATE objects SET bucket=@bucket, updated_at=@now, last_touched_at=@now WHERE id=@id")
           .run({ id: op.id, bucket: op.bucket, now });
         const row = db.prepare("SELECT * FROM objects WHERE id=@id").get({ id: op.id }) as ObjectRow;
@@ -225,9 +263,18 @@ router.post("/chat", async (req, res): Promise<void> => {
     return;
   }
 
-  const { message } = body.data;
+  const { message, mediaIds } = body.data;
   const now = new Date().toISOString();
   const userMsgId = nanoid();
+
+  // ── Resolve uploaded media URLs ──────────────────────────────────────────
+  type MediaRow = { id: string; url: string; filename: string; mime: string };
+  const mediaRows: MediaRow[] = mediaIds?.length
+    ? (db
+        .prepare(`SELECT id, url, filename, mime FROM media WHERE id IN (${mediaIds.map(() => "?").join(",")})`)
+        .all(...mediaIds) as MediaRow[])
+    : [];
+  const firstMediaUrl = mediaRows[0]?.url ?? null;
 
   // Save user message
   db.prepare(
@@ -251,11 +298,16 @@ router.post("/chat", async (req, res): Promise<void> => {
       db.prepare("SELECT id,type,title,bucket,status FROM objects WHERE status != 'discarded' ORDER BY updated_at DESC LIMIT 30").all() as ObjectRow[]
     ).map((r) => ({ id: r.id, type: r.type, title: r.title, bucket: r.bucket, status: r.status }));
 
+    // Build media context lines if images were attached
+    const mediaContext = mediaRows.length > 0
+      ? `\nThe user has attached ${mediaRows.length} image(s). Their URLs: ${mediaRows.map((m) => m.url).join(", ")}. If creating a media card, set imageUrl to the first URL.`
+      : "";
+
     const completion = await openai.chat.completions.create({
       model: "gpt-5.6-luna",
       max_completion_tokens: 1024,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: SYSTEM_PROMPT + mediaContext },
         {
           role: "system",
           content: `Current cards on the user's desk (for reference by id if they want to update/delete/move):\n${JSON.stringify(currentObjects, null, 2)}`,
@@ -273,11 +325,24 @@ router.post("/chat", async (req, res): Promise<void> => {
     req.log.info({ ops: (aiResult.ops as unknown[])?.length ?? 0 }, "AI ops parsed");
   } catch (err) {
     req.log.warn({ err }, "OpenAI unavailable — using mock AI");
-    aiResult = mockAI(message);
+    aiResult = mockAI(message, firstMediaUrl ?? undefined);
   }
 
-  // Apply ops to DB
+  // ── Post-process ops: if media was attached and a media create op has imageUrl null,
+  //    fill in the first uploaded URL automatically
   const ops = Array.isArray(aiResult.ops) ? (aiResult.ops as Op[]) : [];
+  if (firstMediaUrl) {
+    for (const op of ops) {
+      if (
+        op.op === "create" &&
+        op.type === "media" &&
+        (op.payload as Record<string, unknown>).imageUrl == null
+      ) {
+        (op.payload as Record<string, unknown>).imageUrl = firstMediaUrl;
+      }
+    }
+  }
+
   const changed = applyOps(ops, userMsgId);
 
   // Save assistant message
@@ -289,7 +354,7 @@ router.post("/chat", async (req, res): Promise<void> => {
     id: assistantMsgId,
     content: assistantContent,
     now,
-    meta: JSON.stringify({ objectIds: changed.map((o) => o.id) }),
+    meta: JSON.stringify({ objectIds: changed.map((o) => o.id), undoMessageId: userMsgId }),
   });
 
   const responsePayload = {
@@ -300,6 +365,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       created_at: now,
     },
     objectsChanged: changed.map(rowToObject),
+    undoMessageId: userMsgId,
   };
 
   res.json(SendChatResponse.parse(responsePayload));

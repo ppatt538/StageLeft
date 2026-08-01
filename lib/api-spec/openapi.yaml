@@ -413,6 +413,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DaydeskObject"
+        undoMessageId:
+          type: string
+          description: The user message ID whose ops can be undone via POST /undo/:messageId
       required:
         - message
         - objectsChanged

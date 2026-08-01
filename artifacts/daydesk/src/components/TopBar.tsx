@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, SearchIcon } from 'lucide-react';
+import { Search, SearchIcon, X } from 'lucide-react';
 
 interface TopBarProps {
   searchQuery: string;
@@ -16,6 +16,11 @@ export function TopBar({ searchQuery, onSearchChange }: TopBarProps) {
     return () => clearInterval(timer);
   }, []);
 
+  // When parent clears searchQuery (e.g. tab switch), close mobile search too
+  useEffect(() => {
+    if (!searchQuery) setSearchOpen(false);
+  }, [searchQuery]);
+
   const formattedTime = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
     hour: 'numeric',
@@ -26,6 +31,10 @@ export function TopBar({ searchQuery, onSearchChange }: TopBarProps) {
   const handleChange = (value: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => onSearchChange(value), 200);
+  };
+
+  const handleClear = () => {
+    onSearchChange('');
   };
 
   return (
@@ -40,17 +49,26 @@ export function TopBar({ searchQuery, onSearchChange }: TopBarProps) {
         <div
           className={`flex-1 flex items-center justify-end md:justify-center transition-all ${searchOpen ? 'w-full' : ''}`}
         >
-          {/* Desktop search */}
+          {/* Desktop search — controlled input so tab-switch clearing works */}
           <div className="hidden md:flex relative w-full max-w-lg">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <input
               type="search"
               placeholder="Search everything..."
-              defaultValue={searchQuery}
+              value={searchQuery}
               onChange={(e) => handleChange(e.target.value)}
-              className="w-full h-10 pl-9 pr-4 rounded-full bg-card/50 border border-border/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all placeholder:text-muted-foreground shadow-sm"
+              className="w-full h-10 pl-9 pr-9 rounded-full bg-card/50 border border-border/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-card transition-all placeholder:text-muted-foreground shadow-sm"
               data-testid="input-search"
             />
+            {searchQuery && (
+              <button
+                onClick={handleClear}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Mobile search toggle */}
@@ -58,20 +76,19 @@ export function TopBar({ searchQuery, onSearchChange }: TopBarProps) {
             {searchOpen ? (
               <div className="relative w-full flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <input
                     autoFocus
                     type="search"
                     placeholder="Search..."
-                    defaultValue={searchQuery}
+                    value={searchQuery}
                     onChange={(e) => handleChange(e.target.value)}
                     className="w-full h-9 pl-9 pr-4 rounded-full bg-card border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    onBlur={() => setSearchOpen(false)}
                     data-testid="input-search-mobile"
                   />
                 </div>
                 <button
-                  onClick={() => setSearchOpen(false)}
+                  onClick={() => { setSearchOpen(false); handleClear(); }}
                   className="text-sm font-medium text-muted-foreground p-2"
                   data-testid="button-cancel-search"
                 >
