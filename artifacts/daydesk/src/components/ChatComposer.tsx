@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Paperclip, ArrowUp, X, ImageIcon, Loader2, RotateCcw } from 'lucide-react';
+import { Paperclip, ArrowUp, X, ImageIcon, Loader2, RotateCcw, Mic } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSendChat } from '@workspace/api-client-react';
+import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { cn } from '@/lib/utils';
 
 interface UploadedFile {
@@ -29,6 +30,40 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
 
   const { toast } = useToast();
   const sendChat = useSendChat();
+  const {
+    supported: speechSupported,
+    listening,
+    transcript,
+    interimTranscript,
+    start: startListening,
+    stop: stopListening,
+    error: speechError,
+  } = useSpeechRecognition();
+
+  // ─── Sync final speech transcript → text state ─────────────────────────────
+
+  useEffect(() => {
+    if (transcript) setText(transcript);
+  }, [transcript]);
+
+  // ─── Speech error toasts ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!speechError) return;
+    if (speechError === 'not-allowed') {
+      toast({
+        description: 'Microphone access denied. Check your browser settings.',
+        variant: 'destructive',
+        duration: 4000,
+      });
+    } else if (speechError !== 'no-speech' && speechError !== 'aborted') {
+      toast({
+        description: 'Voice input stopped unexpectedly. Please try again.',
+        variant: 'destructive',
+        duration: 3000,
+      });
+    }
+  }, [speechError, toast]);
 
   // ─── Auto-resize textarea ──────────────────────────────────────────────────
 
@@ -39,7 +74,18 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }, []);
 
-  useEffect(() => { adjustHeight(); }, [text, adjustHeight]);
+  useEffect(() => { adjustHeight(); }, [text, interimTranscript, adjustHeight]);
+
+  // ─── Mic toggle ────────────────────────────────────────────────────────────
+
+  const handleMicToggle = () => {
+    if (listening) {
+      stopListening();
+    } else {
+      setText('');         // clear existing text when starting voice
+      startListening();
+    }
+  };
 
   // ─── File upload ───────────────────────────────────────────────────────────
 
@@ -81,12 +127,19 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
 
   // ─── Send ──────────────────────────────────────────────────────────────────
 
-  const canSend = (text.trim().length > 0 || attachments.length > 0) && !sendChat.isPending && !uploading;
+  // While listening, combine finals + interim so no spoken words are lost on send
+  const effectiveText = listening
+    ? [transcript, interimTranscript].filter(Boolean).join(' ').trim() || text
+    : text;
+  const canSend = (effectiveText.trim().length > 0 || attachments.length > 0) && !sendChat.isPending && !uploading;
 
   const handleSend = () => {
     if (!canSend) return;
 
-    const submittedText = text.trim() || (attachments.length > 0
+    // Commit any in-flight voice before sending
+    if (listening) stopListening();
+
+    const submittedText = effectiveText.trim() || (attachments.length > 0
       ? `Attach image: ${attachments.map((a) => a.filename).join(', ')}`
       : '');
     const mediaIds = attachments.map((a) => a.id);
@@ -101,7 +154,6 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
           const changed = response.objectsChanged ?? [];
 
           if (changed.length > 0 && response.undoMessageId) {
-            // Dismiss any previous undo bar first
             if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
             setUndoMessageId(response.undoMessageId);
             setUndoVisible(true);
@@ -133,7 +185,7 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
       setUndoVisible(false);
       setUndoMessageId(null);
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-      onCardCreated?.(); // Refresh the card list
+      onCardCreated?.();
     } catch {
       toast({ description: 'Could not undo. Try again.', variant: 'destructive', duration: 3000 });
     } finally {
@@ -146,6 +198,12 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  // Typing while listening cancels voice so the user takes manual control
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (listening) stopListening();
+    setText(e.target.value);
   };
 
   // ─── Drag-and-drop onto the composer ──────────────────────────────────────
@@ -164,6 +222,26 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
   };
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
+
+  // ─── Derived display values ────────────────────────────────────────────────
+
+  // While listening: show finals (transcript) + in-flight partial (interimTranscript)
+  // so no already-spoken words disappear from the textarea.
+  const composedSpeech = listening
+    ? [transcript, interimTranscript].filter(Boolean).join(' ').trim()
+    : '';
+
+  // Display: composed speech while listening, otherwise the committed text state
+  const displayValue = listening ? composedSpeech || '' : text;
+
+  // Dim when we have interim text flying in alongside finals
+  const isShowingInterim = listening && !!interimTranscript;
+
+  const placeholder = listening
+    ? 'Listening…'
+    : attachments.length > 0
+      ? 'Add a note about this image...'
+      : 'Tell Daydesk what to capture...';
 
   return (
     <div
@@ -246,35 +324,71 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
             data-testid="input-file"
           />
 
-          {/* Paperclip */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className={cn(
-              'p-3 rounded-full transition-colors flex-shrink-0',
-              uploading
-                ? 'text-muted-foreground/40 cursor-not-allowed'
-                : 'text-muted-foreground hover:text-foreground hover:bg-black/5',
+          {/* Left buttons: paperclip + mic */}
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            {/* Paperclip */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || listening}
+              className={cn(
+                'p-3 rounded-full transition-colors',
+                (uploading || listening)
+                  ? 'text-muted-foreground/30 cursor-not-allowed'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-black/5',
+              )}
+              title="Attach image"
+              data-testid="button-attach"
+            >
+              {uploading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Paperclip className="h-5 w-5" />
+              )}
+            </button>
+
+            {/* Mic — hidden on unsupported browsers */}
+            {speechSupported && (
+              <button
+                onClick={handleMicToggle}
+                title={listening ? 'Stop recording' : 'Voice input'}
+                data-testid="button-mic"
+                className={cn(
+                  'p-3 rounded-full transition-colors flex-shrink-0',
+                  listening
+                    ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-black/5',
+                )}
+              >
+                {listening ? (
+                  /* Pulsing red dot while recording */
+                  <span className="relative flex h-5 w-5 items-center justify-center">
+                    <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-70" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                  </span>
+                ) : (
+                  <Mic className="h-5 w-5" />
+                )}
+              </button>
             )}
-            title="Attach image"
-            data-testid="button-attach"
-          >
-            {uploading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Paperclip className="h-5 w-5" />
-            )}
-          </button>
+          </div>
 
           {/* Textarea + send */}
-          <div className="flex-1 relative bg-card shadow-sm border border-border/60 rounded-[24px] overflow-hidden flex items-end focus-within:ring-1 focus-within:ring-primary/30 transition-all">
+          <div className={cn(
+            "flex-1 relative bg-card shadow-sm border rounded-[24px] overflow-hidden flex items-end transition-all",
+            listening
+              ? "border-red-300 ring-1 ring-red-200"
+              : "border-border/60 focus-within:ring-1 focus-within:ring-primary/30",
+          )}>
             <textarea
               ref={textareaRef}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
+              value={displayValue}
+              onChange={handleTextChange}
               onKeyDown={handleKeyDown}
-              placeholder={attachments.length > 0 ? 'Add a note about this image...' : 'Tell Daydesk what to capture...'}
-              className="w-full bg-transparent resize-none outline-none max-h-[120px] py-3.5 pl-4 pr-12 text-sm text-foreground placeholder:text-muted-foreground/70"
+              placeholder={placeholder}
+              className={cn(
+                "w-full bg-transparent resize-none outline-none max-h-[120px] py-3.5 pl-4 pr-12 text-sm placeholder:text-muted-foreground/70",
+                isShowingInterim ? "text-foreground/50 italic" : "text-foreground",
+              )}
               rows={1}
               data-testid="input-chat"
               disabled={sendChat.isPending}
