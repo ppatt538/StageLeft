@@ -1,8 +1,16 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import objectsRouter from "./objects";
+import messagesRouter from "./messages";
+import rolloverRouter from "./rollover";
+import uploadRouter from "./upload";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(objectsRouter);
+router.use(messagesRouter);
+router.use(rolloverRouter);
+router.use(uploadRouter);
 
 export default router;
