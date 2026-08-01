@@ -39,10 +39,10 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen }: TopBarPro
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border h-14">
-      <div className="flex h-14 items-center px-4 md:px-6 gap-4">
+    <header className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur-md border-b border-border/60 h-12 md:h-14">
+      <div className="flex h-12 md:h-14 items-center px-4 md:px-6 gap-3 md:gap-4">
         {!searchOpen && (
-          <div className="font-semibold text-lg text-foreground tracking-tight whitespace-nowrap">
+          <div className="font-bold text-[17px] md:text-lg text-foreground tracking-[-0.4px] whitespace-nowrap">
             Daydesk
           </div>
         )}
