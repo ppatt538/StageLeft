@@ -133,9 +133,16 @@ export function DeskPage() {
                 bucket: card.bucket as 'today' | 'week' | 'archive' | 'pinned',
                 status: card.status as 'active' | 'done' | 'snoozed' | 'discarded',
                 tags: card.tags as string[],
+                payload: card.payload as Record<string, unknown>,
               },
             },
             { onSuccess: invalidateAll },
+          );
+        }}
+      onDeleteCard={(id) => {
+          updateObject.mutate(
+            { id, data: { status: 'discarded' } },
+            { onSuccess: () => { invalidateAll(); setSelectedCardId(null); } },
           );
         }}
       />
