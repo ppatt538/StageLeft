@@ -51,36 +51,38 @@
 }
 
 :root {
-  --background: 40 27% 96%;
-  --foreground: 24 10% 10%;
-  --border: 40 10% 90%;
-  --input: 40 10% 90%;
-  --ring: 221 83% 53%;
-  
-  --card: 0 0% 100%;
-  --card-foreground: 24 10% 10%;
-  --card-border: 40 10% 90%;
-  
+  /* Warm paper desk — clean off-white, not olive */
+  --background: 36 14% 97%;        /* Near-white paper: warm hue, low sat */
+  --foreground: 222 14% 14%;       /* Warm-cool ink dark; richer than plain black */
+  --border: 34 10% 88%;            /* Soft parchment edge */
+  --input: 34 10% 88%;
+  --ring: 214 28% 48%;             /* Muted slate blue ring */
+
+  --card: 0 0% 100%;               /* Pure white card surface */
+  --card-foreground: 222 14% 14%;
+  --card-border: 34 8% 91%;        /* Barely-there card edge */
+
   --popover: 0 0% 100%;
-  --popover-foreground: 24 10% 10%;
-  --popover-border: 40 10% 90%;
-  
-  --primary: 221 83% 53%;
+  --popover-foreground: 222 14% 14%;
+  --popover-border: 34 8% 91%;
+
+  /* Muted slate blue — calm, not electric */
+  --primary: 214 28% 44%;
   --primary-foreground: 0 0% 100%;
-  
-  --secondary: 40 10% 90%;
-  --secondary-foreground: 24 10% 10%;
-  
-  --muted: 40 15% 92%;
-  --muted-foreground: 24 5% 45%;
-  
-  --accent: 40 10% 90%;
-  --accent-foreground: 24 10% 10%;
-  
-  --destructive: 0 72% 51%;
+
+  --secondary: 34 10% 91%;
+  --secondary-foreground: 222 14% 14%;
+
+  --muted: 36 10% 93%;             /* Soft stone surface */
+  --muted-foreground: 222 8% 50%;  /* Neutral mid-gray, no brown cast */
+
+  --accent: 34 10% 91%;
+  --accent-foreground: 222 14% 14%;
+
+  --destructive: 0 63% 49%;
   --destructive-foreground: 0 0% 100%;
-  
-  --success: 142 76% 36%;
+
+  --success: 150 40% 38%;
   --success-foreground: 0 0% 100%;
 
   --app-font-sans: 'Inter', sans-serif;
@@ -90,34 +92,34 @@
 }
 
 .dark {
-  /* Using light mode variables for phase 1 as requested */
-  --background: 40 27% 96%;
-  --foreground: 24 10% 10%;
-  --border: 40 10% 90%;
-  --input: 40 10% 90%;
-  --ring: 221 83% 53%;
-  
+  /* Mirror light for now */
+  --background: 36 14% 97%;
+  --foreground: 222 14% 14%;
+  --border: 34 10% 88%;
+  --input: 34 10% 88%;
+  --ring: 214 28% 48%;
+
   --card: 0 0% 100%;
-  --card-foreground: 24 10% 10%;
-  --card-border: 40 10% 90%;
-  
+  --card-foreground: 222 14% 14%;
+  --card-border: 34 8% 91%;
+
   --popover: 0 0% 100%;
-  --popover-foreground: 24 10% 10%;
-  --popover-border: 40 10% 90%;
-  
-  --primary: 221 83% 53%;
+  --popover-foreground: 222 14% 14%;
+  --popover-border: 34 8% 91%;
+
+  --primary: 214 28% 44%;
   --primary-foreground: 0 0% 100%;
-  
-  --secondary: 40 10% 90%;
-  --secondary-foreground: 24 10% 10%;
-  
-  --muted: 40 15% 92%;
-  --muted-foreground: 24 5% 45%;
-  
-  --accent: 40 10% 90%;
-  --accent-foreground: 24 10% 10%;
-  
-  --destructive: 0 72% 51%;
+
+  --secondary: 34 10% 91%;
+  --secondary-foreground: 222 14% 14%;
+
+  --muted: 36 10% 93%;
+  --muted-foreground: 222 8% 50%;
+
+  --accent: 34 10% 91%;
+  --accent-foreground: 222 14% 14%;
+
+  --destructive: 0 63% 49%;
   --destructive-foreground: 0 0% 100%;
 }
 

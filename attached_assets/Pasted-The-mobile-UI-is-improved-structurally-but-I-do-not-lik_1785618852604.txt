@@ -1,0 +1,45 @@
+The mobile UI is improved structurally, but I do not like the current theme. Please keep the layout improvements, but redesign the visual theme so the app feels calmer, cleaner, and more premium.
+
+What feels wrong in the current theme:
+- the background has a muddy brown/olive cast
+- the dark cards feel too heavy
+- the white top and bottom bars feel disconnected from the dark middle section
+- the blue active tab feels too sharp compared to the rest of the palette
+- overall it feels more like a dark media app than a calm AI desk
+
+New direction:
+Create a “warm paper desk” theme.
+
+Theme goals:
+- calm, premium, intelligent
+- warm off-white / paper-like background
+- subtle layered neutral surfaces
+- dark or semi-dark cards that still feel elegant, not heavy
+- a restrained accent color, preferably muted blue or slate blue
+- no muddy brown, no olive cast, no neon accents
+- cohesive header, content area, and bottom composer so the whole screen feels like one design system
+
+Color direction:
+- app background: warm paper / off-white
+- section surfaces: soft cream / stone
+- cards: deep graphite or warm charcoal
+- borders: subtle soft gray
+- text: strong contrast but not stark black everywhere
+- accent: muted blue, slate, or subdued teal
+- checklist/reminder/link/media colors should be more muted and refined
+
+Specific styling changes:
+- remove the muddy dark brown page background
+- unify the header, content area, and composer into one coherent palette
+- make cards feel lighter and more premium
+- reduce harsh contrast transitions between sections
+- make the active tab styling feel integrated with the theme
+- refine icon background circles so they feel subtle and elegant, not bright
+- preserve readability and hierarchy
+
+Do not redesign the layout. Only change theme, color system, contrast handling, and visual styling so it feels like a premium calm productivity app.
+
+Please implement directly, then summarize:
+1. the new theme direction
+2. the key palette changes
+3. any optional alternate themes worth trying next

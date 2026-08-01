@@ -18,18 +18,19 @@ interface CardListProps {
 }
 
 // ─── Per-type icon + colour config ────────────────────────────────────────────
+// Dusty, ink-stamp tones — refined, not vivid
 const TYPE_CONFIG: Record<string, {
   Icon: React.ComponentType<{ className?: string }>;
   bg: string;
   fg: string;
 }> = {
-  checklist: { Icon: CheckSquare,  bg: 'bg-emerald-50', fg: 'text-emerald-600' },
-  note:      { Icon: AlignLeft,    bg: 'bg-stone-100',  fg: 'text-stone-500'   },
-  reminder:  { Icon: Clock,        bg: 'bg-amber-50',   fg: 'text-amber-500'   },
-  event:     { Icon: Clock,        bg: 'bg-amber-50',   fg: 'text-amber-500'   },
-  link:      { Icon: LinkIcon,     bg: 'bg-sky-50',     fg: 'text-sky-500'     },
-  media:     { Icon: ImageIcon,    bg: 'bg-violet-50',  fg: 'text-violet-500'  },
-  poster:    { Icon: ImageIcon,    bg: 'bg-violet-50',  fg: 'text-violet-500'  },
+  checklist: { Icon: CheckSquare, bg: 'bg-[#edf4ee]', fg: 'text-[#3d6e50]' }, // dusty sage
+  note:      { Icon: AlignLeft,   bg: 'bg-[#f3f2ef]', fg: 'text-[#5e5a55]' }, // warm stone
+  reminder:  { Icon: Clock,       bg: 'bg-[#f5f1e8]', fg: 'text-[#7a6030]' }, // muted gold
+  event:     { Icon: Clock,       bg: 'bg-[#f5f1e8]', fg: 'text-[#7a6030]' }, // muted gold
+  link:      { Icon: LinkIcon,    bg: 'bg-[#edf1f7]', fg: 'text-[#3a5272]' }, // dusty slate
+  media:     { Icon: ImageIcon,   bg: 'bg-[#f1eef7]', fg: 'text-[#5c4878]' }, // dusty mauve
+  poster:    { Icon: ImageIcon,   bg: 'bg-[#f1eef7]', fg: 'text-[#5c4878]' }, // dusty mauve
 };
 
 // ─── Media title helper — replaces raw filenames ───────────────────────────
