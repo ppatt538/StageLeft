@@ -33,7 +33,6 @@ export const ObjectBucket = {
   today: 'today',
   week: 'week',
   archive: 'archive',
-  pinned: 'pinned',
 } as const;
 
 export type ObjectStatus = typeof ObjectStatus[keyof typeof ObjectStatus];
@@ -120,6 +119,8 @@ export interface ObjectUpdate {
   payload?: JsonPayload;
   /** @nullable */
   snooze_until?: string | null;
+  /** Set true to pin (float to top of bucket), false to unpin. Translates to priority 1/0. */
+  pinned?: boolean;
 }
 
 export interface ChatInput {

@@ -18,7 +18,7 @@ import {
 } from "@workspace/db";
 import { nanoid } from "nanoid";
 import { logger } from "./logger";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 // ─── Re-exports consumed by routes ───────────────────────────────────────────
 
@@ -63,8 +63,15 @@ export type DaydeskObject = {
 // ─── Row → Object (parse JSON text columns) ───────────────────────────────────
 
 export function rowToObject(row: ObjectRow): DaydeskObject {
+  // Normalize legacy rows that have bucket='pinned' (old data model).
+  // Pin is now represented by priority=1 within today/week/archive.
+  const bucket = row.bucket === "pinned" ? "today" : row.bucket;
+  const priority = row.bucket === "pinned" ? Math.max(row.priority, 1) : row.priority;
+
   return {
     ...row,
+    bucket,
+    priority,
     tags:    JSON.parse(row.tags),
     layout:  row.layout  ? JSON.parse(row.layout)  : null,
     payload: JSON.parse(row.payload),
@@ -94,6 +101,28 @@ export function buildSearchText(
   }
 
   return parts.join(" ").toLowerCase();
+}
+
+// ─── One-time data migrations ─────────────────────────────────────────────────
+
+/**
+ * Runs idempotent schema/data migrations at startup.
+ * Safe to call on every boot — each migration is a no-op when already applied.
+ */
+export async function ensureMigrations(): Promise<void> {
+  // Migration: legacy bucket='pinned' → bucket='today' with priority=1.
+  // Pin is now represented by priority=1 within today/week/archive.
+  const now = new Date().toISOString();
+  const result = await db
+    .update(daydeskObjects)
+    .set({ bucket: "today", priority: 1, updated_at: now })
+    .where(eq(daydeskObjects.bucket, "pinned"));
+  if ((result as unknown as { rowCount?: number }).rowCount) {
+    logger.info(
+      { rows: (result as unknown as { rowCount: number }).rowCount },
+      "Migration: converted legacy pinned-bucket rows to today+priority=1",
+    );
+  }
 }
 
 // ─── Seed data (runs once on first boot against an empty DB) ─────────────────

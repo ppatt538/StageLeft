@@ -33,11 +33,6 @@ const EMPTY_STATES: Record<ObjectBucket, { emoji: string; heading: string; sub: 
     heading: 'Archive is empty',
     sub: 'Older cards roll here automatically each day.',
   },
-  pinned: {
-    emoji: '📌',
-    heading: 'Nothing pinned yet',
-    sub: 'Pin important cards to keep them always in reach.',
-  },
 };
 
 function BucketEmptyState({ bucket }: { bucket: ObjectBucket }) {
@@ -83,7 +78,7 @@ export function DeskPage() {
   }, [queryClient, listParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const counts = useMemo(() => {
-    const c: Record<ObjectBucket, number> = { today: 0, week: 0, archive: 0, pinned: 0 };
+    const c: Record<ObjectBucket, number> = { today: 0, week: 0, archive: 0 };
     (allObjects as DaydeskObject[]).forEach((card) => {
       if (card.status !== 'discarded' && card.bucket in c) {
         c[card.bucket as ObjectBucket]++;
@@ -167,8 +162,9 @@ export function DeskPage() {
                       {
                         id,
                         data: {
-                          ...(updates.bucket && { bucket: updates.bucket as 'today' | 'week' | 'archive' | 'pinned' }),
+                          ...(updates.bucket && { bucket: updates.bucket as 'today' | 'week' | 'archive' }),
                           ...(updates.status && { status: updates.status as 'active' | 'done' | 'snoozed' | 'discarded' }),
+                          ...(updates.priority !== undefined && { priority: updates.priority }),
                         },
                       },
                       { onSuccess: invalidateAll },
@@ -200,8 +196,9 @@ export function DeskPage() {
               id: card.id,
               data: {
                 title: card.title,
-                bucket: card.bucket as 'today' | 'week' | 'archive' | 'pinned',
+                bucket: card.bucket as 'today' | 'week' | 'archive',
                 status: card.status as 'active' | 'done' | 'snoozed' | 'discarded',
+                priority: card.priority,
                 tags: card.tags as string[],
                 payload: card.payload as Record<string, unknown>,
               },

@@ -42,7 +42,8 @@ export async function runRollover(): Promise<{ moved: number; details: string }>
       completed_at: sql`COALESCE(${daydeskObjects.completed_at}, ${now})`,
     })
     .where(and(
-      ne(daydeskObjects.bucket,  "pinned"),
+      eq(daydeskObjects.priority, 0),        // never auto-move pinned (priority=1) cards
+      ne(daydeskObjects.bucket,  "pinned"),  // safety net for any legacy pinned-bucket rows
       eq(daydeskObjects.status,  "done"),
       ne(daydeskObjects.bucket,  "archive"),
     ))
@@ -58,6 +59,8 @@ export async function runRollover(): Promise<{ moved: number; details: string }>
     .update(daydeskObjects)
     .set({ bucket: "week", updated_at: now })
     .where(and(
+      eq(daydeskObjects.priority, 0),        // never auto-move pinned cards
+      ne(daydeskObjects.bucket,  "pinned"),  // safety net for legacy rows
       eq(daydeskObjects.bucket, "today"),
       eq(daydeskObjects.status, "active"),
       sql`LEFT(${daydeskObjects.last_touched_at}, 10) < ${today}`,
@@ -74,6 +77,8 @@ export async function runRollover(): Promise<{ moved: number; details: string }>
     .update(daydeskObjects)
     .set({ bucket: "archive", updated_at: now })
     .where(and(
+      eq(daydeskObjects.priority, 0),        // never auto-move pinned cards
+      ne(daydeskObjects.bucket,  "pinned"),  // safety net for legacy rows
       eq(daydeskObjects.bucket, "week"),
       eq(daydeskObjects.status, "active"),
       sql`LEFT(${daydeskObjects.last_touched_at}, 10) <= ${sevenAgo}`,

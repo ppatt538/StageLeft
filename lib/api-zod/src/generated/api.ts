@@ -22,7 +22,7 @@ export const HealthCheckResponse = zod.object({
  * @summary List objects
  */
 export const ListObjectsQueryParams = zod.object({
-  "bucket": zod.enum(['today', 'week', 'archive', 'pinned', 'all']).optional(),
+  "bucket": zod.enum(['today', 'week', 'archive', 'all']).optional(),
   "q": zod.coerce.string().optional()
 })
 
@@ -30,7 +30,7 @@ export const ListObjectsResponseItem = zod.object({
   "id": zod.string(),
   "type": zod.enum(['checklist', 'note', 'reminder', 'event', 'link', 'media', 'poster']),
   "title": zod.string(),
-  "bucket": zod.enum(['today', 'week', 'archive', 'pinned']),
+  "bucket": zod.enum(['today', 'week', 'archive']),
   "status": zod.enum(['active', 'done', 'snoozed', 'discarded']),
   "priority": zod.number(),
   "tags": zod.array(zod.string()),
@@ -75,7 +75,7 @@ export const GetObjectResponse = zod.object({
   "id": zod.string(),
   "type": zod.enum(['checklist', 'note', 'reminder', 'event', 'link', 'media', 'poster']),
   "title": zod.string(),
-  "bucket": zod.enum(['today', 'week', 'archive', 'pinned']),
+  "bucket": zod.enum(['today', 'week', 'archive']),
   "status": zod.enum(['active', 'done', 'snoozed', 'discarded']),
   "priority": zod.number(),
   "tags": zod.array(zod.string()),
@@ -117,9 +117,10 @@ export const UpdateObjectParams = zod.object({
 
 export const UpdateObjectBody = zod.object({
   "title": zod.string().optional(),
-  "bucket": zod.enum(['today', 'week', 'archive', 'pinned']).optional(),
+  "bucket": zod.enum(['today', 'week', 'archive']).optional(),
   "status": zod.enum(['active', 'done', 'snoozed', 'discarded']).optional(),
   "priority": zod.number().optional(),
+  "pinned": zod.boolean().optional(),
   "tags": zod.array(zod.string()).optional(),
   "layout": zod.union([zod.object({
   "x": zod.number(),
@@ -136,7 +137,7 @@ export const UpdateObjectResponse = zod.object({
   "id": zod.string(),
   "type": zod.enum(['checklist', 'note', 'reminder', 'event', 'link', 'media', 'poster']),
   "title": zod.string(),
-  "bucket": zod.enum(['today', 'week', 'archive', 'pinned']),
+  "bucket": zod.enum(['today', 'week', 'archive']),
   "status": zod.enum(['active', 'done', 'snoozed', 'discarded']),
   "priority": zod.number(),
   "tags": zod.array(zod.string()),
@@ -180,7 +181,7 @@ export const DeleteObjectResponse = zod.object({
   "id": zod.string(),
   "type": zod.enum(['checklist', 'note', 'reminder', 'event', 'link', 'media', 'poster']),
   "title": zod.string(),
-  "bucket": zod.enum(['today', 'week', 'archive', 'pinned']),
+  "bucket": zod.enum(['today', 'week', 'archive']),
   "status": zod.enum(['active', 'done', 'snoozed', 'discarded']),
   "priority": zod.number(),
   "tags": zod.array(zod.string()),
@@ -233,7 +234,7 @@ export const SendChatResponse = zod.object({
   "id": zod.string(),
   "type": zod.enum(['checklist', 'note', 'reminder', 'event', 'link', 'media', 'poster']),
   "title": zod.string(),
-  "bucket": zod.enum(['today', 'week', 'archive', 'pinned']),
+  "bucket": zod.enum(['today', 'week', 'archive']),
   "status": zod.enum(['active', 'done', 'snoozed', 'discarded']),
   "priority": zod.number(),
   "tags": zod.array(zod.string()),

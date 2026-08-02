@@ -140,8 +140,8 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
   };
 
   const handlePin = () => {
-    const nextBucket = draft.bucket === 'pinned' ? 'today' : 'pinned';
-    onUpdateCard({ ...draft, bucket: nextBucket });
+    const nextPriority = draft.priority >= 1 ? 0 : 1;
+    onUpdateCard({ ...draft, priority: nextPriority });
     onClose();
   };
 
@@ -187,10 +187,10 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
                 </button>
                 <button
                   onClick={handlePin}
-                  title={draft.bucket === 'pinned' ? 'Unpin' : 'Pin'}
+                  title={draft.priority >= 1 ? 'Unpin' : 'Pin to top'}
                   className={cn(
                     'p-2 rounded-lg transition-colors',
-                    draft.bucket === 'pinned'
+                    draft.priority >= 1
                       ? 'text-amber-500 bg-amber-50 hover:bg-amber-100'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}

@@ -89,13 +89,22 @@ router.patch("/objects/:id", async (req, res): Promise<void> => {
   if (patch.status === "done" && !completedAt) completedAt = now;
   if (patch.status && patch.status !== "done") completedAt = null;
 
+  // Priority resolution: explicit `priority` wins; otherwise `pinned` boolean
+  // is a convenience setter (true → 1, false → 0); fall back to existing value.
+  const newPriority =
+    patch.priority !== undefined
+      ? patch.priority
+      : patch.pinned !== undefined
+        ? (patch.pinned ? 1 : 0)
+        : existing.priority;
+
   const [updated] = await db
     .update(daydeskObjects)
     .set({
       title:           newTitle,
       bucket:          patch.bucket   ?? existing.bucket,
       status:          patch.status   ?? existing.status,
-      priority:        patch.priority ?? existing.priority,
+      priority:        newPriority,
       tags:            patch.tags     ? JSON.stringify(patch.tags) : existing.tags,
       layout:          patch.layout !== undefined
                          ? (patch.layout ? JSON.stringify(patch.layout) : null)

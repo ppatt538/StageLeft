@@ -22,8 +22,8 @@ import { cn } from '@/lib/utils';
 export interface CardListProps {
   cards: DaydeskObject[];
   onUpdateCard: (card: DaydeskObject) => void;
-  /** Called when a swipe action changes a card's bucket or status (move/pin). */
-  onMoveCard?: (id: string, updates: { bucket?: string; status?: string }) => void;
+  /** Called when a swipe action changes a card's bucket, status, or pin state. */
+  onMoveCard?: (id: string, updates: { bucket?: string; status?: string; priority?: number }) => void;
   onDeleteCard?: (id: string) => void;
   onOpenCard?: (card: DaydeskObject) => void;
 }
@@ -100,7 +100,7 @@ interface SwipeableCardProps {
   openSwipeId: string | null;
   onSetOpenSwipe: (id: string | null) => void;
   onUpdateCard: (card: DaydeskObject) => void;
-  onMoveCard?: (id: string, updates: { bucket?: string; status?: string }) => void;
+  onMoveCard?: (id: string, updates: { bucket?: string; status?: string; priority?: number }) => void;
   onDeleteCard?: (id: string) => void;
   onOpenCard?: (card: DaydeskObject) => void;
 }
@@ -159,9 +159,9 @@ function SwipeableCard({
 
   const handlePin = () => {
     snapBack();
-    const nextBucket = card.bucket === 'pinned' ? 'today' : 'pinned';
-    if (onMoveCard) onMoveCard(card.id, { bucket: nextBucket });
-    else onUpdateCard({ ...card, bucket: nextBucket });
+    const nextPriority = card.priority >= 1 ? 0 : 1;
+    if (onMoveCard) onMoveCard(card.id, { priority: nextPriority });
+    else onUpdateCard({ ...card, priority: nextPriority });
   };
 
   const handleDelete = () => {
@@ -313,6 +313,11 @@ function SwipeableCard({
         whileTap={{ scale: 0.994 }}
         className="bg-card will-change-transform"
       >
+        {/* Pin indicator — amber left border */}
+        {card.priority >= 1 && (
+          <div className="absolute left-0 inset-y-0 w-[3px] rounded-l-2xl bg-amber-400" />
+        )}
+
         {/* Row */}
         <div
           className="flex items-center px-3.5 py-2.5 min-h-[52px] cursor-pointer active:bg-black/[0.04] transition-colors select-none"

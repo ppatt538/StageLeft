@@ -1,5 +1,5 @@
 export type ObjectType = 'checklist' | 'note' | 'reminder' | 'event' | 'link' | 'media' | 'poster';
-export type ObjectBucket = 'today' | 'week' | 'archive' | 'pinned';
+export type ObjectBucket = 'today' | 'week' | 'archive';
 export type ObjectStatus = 'active' | 'done' | 'snoozed' | 'discarded';
 
 export interface ObjectLayout { x: number; y: number; w: number; h: number; z: number; }

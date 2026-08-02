@@ -13,5 +13,4 @@ export const ObjectBucket = {
   today: 'today',
   week: 'week',
   archive: 'archive',
-  pinned: 'pinned',
 } as const;

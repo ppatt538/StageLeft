@@ -26,16 +26,16 @@ RESPONSE FORMAT (always valid JSON, no markdown fences):
 
 OPERATION TYPES:
 1. Create a card:
-   { "op": "create", "type": "checklist|note|reminder|event|link|media", "title": "...", "bucket": "today|week|archive|pinned", "priority": 0, "tags": [], "payload": { ...type-specific } }
+   { "op": "create", "type": "checklist|note|reminder|event|link|media", "title": "...", "bucket": "today|week|archive", "priority": 0, "tags": [], "payload": { ...type-specific } }
 
 2. Update a card (by id):
-   { "op": "update", "id": "...", "title": "...", "bucket": "...", "status": "active|done|snoozed|discarded", "payload": { ...partial } }
+   { "op": "update", "id": "...", "title": "...", "bucket": "...", "status": "active|done|snoozed|discarded", "priority": 0, "payload": { ...partial } }
 
 3. Delete a card (by id):
    { "op": "delete", "id": "..." }
 
 4. Move a card between buckets:
-   { "op": "move", "id": "...", "bucket": "today|week|archive|pinned" }
+   { "op": "move", "id": "...", "bucket": "today|week|archive" }
 
 PAYLOAD SHAPES by type:
 - checklist: { "items": [{ "id": "i1", "text": "...", "done": false }] }
@@ -46,7 +46,8 @@ PAYLOAD SHAPES by type:
 - media:     { "imageUrl": "<url or null>", "ocrText": "optional caption" }
 
 RULES:
-- Default bucket is "today" unless the user says "this week" → "week".
+- Default bucket is "today" unless the user says "this week" → "week". Never use "pinned" as a bucket.
+- To pin a card (keep it at the top of its bucket), set priority=1 in create or update. To unpin, set priority=0.
 - For checklists, generate unique short IDs for each item (i1, i2, etc.).
 - For reminders/events, infer date/time from context (today = current date: ${new Date().toLocaleDateString("en-CA")}).
 - If user says "done", "finished", "mark X as done" → op "update" with status "done".

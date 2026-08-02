@@ -13,7 +13,6 @@ export function TabBar({ activeTab, onTabChange, counts }: TabBarProps) {
     { id: 'today',   label: 'Today'     },
     { id: 'week',    label: 'This Week' },
     { id: 'archive', label: 'Archive'   },
-    { id: 'pinned',  label: 'Pinned'    },
   ];
 
   return (
