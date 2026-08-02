@@ -1,34 +1,22 @@
 import { Router, type IRouter } from "express";
-import { db } from "../lib/daydesk-db";
+import { db, daydeskMessages, desc, lt } from "../lib/daydesk-db";
 import { ListMessagesQueryParams, ListMessagesResponse } from "@workspace/api-zod";
-
-type MessageRow = {
-  id: string;
-  role: string;
-  content: string;
-  created_at: string;
-  meta: string | null;
-};
 
 const router: IRouter = Router();
 
 router.get("/messages", async (req, res): Promise<void> => {
   const query = ListMessagesQueryParams.safeParse(req.query);
-  if (!query.success) {
-    res.status(400).json({ error: query.error.message });
-    return;
-  }
+  if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
 
-  const limit = query.data.limit ?? 50;
+  const limit  = query.data.limit ?? 50;
   const before = query.data.before;
 
-  const rows = before
-    ? (db
-        .prepare("SELECT * FROM messages WHERE created_at < @before ORDER BY created_at DESC LIMIT @limit")
-        .all({ before, limit }) as MessageRow[])
-    : (db
-        .prepare("SELECT * FROM messages ORDER BY created_at DESC LIMIT @limit")
-        .all({ limit }) as MessageRow[]);
+  const rows = await db
+    .select()
+    .from(daydeskMessages)
+    .where(before ? lt(daydeskMessages.created_at, before) : undefined)
+    .orderBy(desc(daydeskMessages.created_at))
+    .limit(limit);
 
   const messages = rows.reverse().map((row) => ({
     ...row,

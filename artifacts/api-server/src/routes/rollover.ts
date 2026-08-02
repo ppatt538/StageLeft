@@ -5,7 +5,7 @@ import { RunRolloverResponse } from "@workspace/api-zod";
 const router: IRouter = Router();
 
 router.post("/rollover", async (_req, res): Promise<void> => {
-  const result = runRollover();
+  const result = await runRollover();
   res.json(RunRolloverResponse.parse(result));
 });
 

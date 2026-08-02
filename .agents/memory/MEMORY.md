@@ -1,0 +1,1 @@
+- [PostgreSQL migration](pg-migration.md) — SQLite → PostgreSQL completed; autoscale containers are ephemeral, all Daydesk data must live in managed pg.

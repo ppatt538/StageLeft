@@ -5,7 +5,6 @@ import path from "path";
 import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { maybeRollover } from "./lib/rollover";
 
 const app: Express = express();
 
@@ -14,16 +13,10 @@ app.use(
     logger,
     serializers: {
       req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
+        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
   }),
@@ -33,22 +26,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded files statically
+// Note: in autoscale production, uploads are also on ephemeral storage.
+// For persistent uploads, migrate to Replit Object Storage.
 const uploadDir = process.env.UPLOAD_DIR ?? "./data/uploads";
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-app.use(
-  "/api/uploads",
-  express.static(path.resolve(uploadDir)),
-);
+app.use("/api/uploads", express.static(path.resolve(uploadDir)));
 
 app.use("/api", router);
-
-// Run rollover once on startup
-try {
-  maybeRollover();
-} catch (err) {
-  logger.warn({ err }, "Rollover on startup failed (non-fatal)");
-}
 
 export default app;
