@@ -172,7 +172,7 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-            className="fixed top-0 right-0 bottom-0 w-full md:w-[460px] bg-background border-l border-border shadow-2xl z-50 hidden md:flex flex-col"
+            className="fixed top-0 right-0 bottom-0 w-full md:w-[460px] bg-background border-l border-border shadow-2xl z-50 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Toolbar */}

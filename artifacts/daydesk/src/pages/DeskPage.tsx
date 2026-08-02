@@ -159,7 +159,29 @@ export function DeskPage() {
                 />
               </div>
               <div className="block md:hidden">
-                <CardList cards={filteredCards} onUpdateCard={handleUpdateCard} />
+                <CardList
+                  cards={filteredCards}
+                  onUpdateCard={handleUpdateCard}
+                  onMoveCard={(id, updates) => {
+                    updateObject.mutate(
+                      {
+                        id,
+                        data: {
+                          ...(updates.bucket && { bucket: updates.bucket as 'today' | 'week' | 'archive' | 'pinned' }),
+                          ...(updates.status && { status: updates.status as 'active' | 'done' | 'snoozed' | 'discarded' }),
+                        },
+                      },
+                      { onSuccess: invalidateAll },
+                    );
+                  }}
+                  onDeleteCard={(id) => {
+                    updateObject.mutate(
+                      { id, data: { status: 'discarded' } },
+                      { onSuccess: invalidateAll },
+                    );
+                  }}
+                  onOpenCard={(card) => setSelectedCardId(card.id)}
+                />
               </div>
             </>
           )}
