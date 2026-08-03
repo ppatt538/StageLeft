@@ -53,7 +53,15 @@ RULES:
 - If user says "done", "finished", "mark X as done" → op "update" with status "done".
 - If user says "delete", "remove", "get rid of" → op "delete".
 - If user is just chatting (no card to create/modify) → return ops: [] and a helpful message.
-- Always return valid JSON. Never wrap in markdown code blocks.`;
+- Always return valid JSON. Never wrap in markdown code blocks.
+
+UPDATING CHECKLIST ITEMS:
+The current cards context includes each card's payload, so you can see existing checklist items and their IDs.
+When updating a checklist, send ONLY the items that are changing — do NOT copy untouched items:
+- Add an item: include it with a new unique ID (e.g. "i3") and no _remove field.
+- Remove an item: include it with its existing ID and "_remove": true.
+- Toggle done / edit text: include it with its existing ID and the updated fields.
+Untouched items are preserved automatically by the backend. Never send the full unchanged list.`;
 
 // ─── Mock AI (fallback when OpenAI not available) ─────────────────────────────
 
@@ -161,9 +169,46 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
           action: "update", before_row: JSON.stringify(existing), created_at: now,
         });
 
-        const newPayload = op.payload
-          ? { ...JSON.parse(existing.payload), ...op.payload }
-          : JSON.parse(existing.payload);
+        const existingPayload = JSON.parse(existing.payload);
+        let newPayload: Record<string, unknown>;
+        if (!op.payload) {
+          newPayload = existingPayload;
+        } else if (existing.type === "checklist" && Array.isArray(op.payload.items)) {
+          // The AI sends only the items it wants to change, using an explicit protocol:
+          //   - New item (id not in existing)       → append
+          //   - Existing item without _remove        → update in place
+          //   - Existing item with _remove: true     → delete
+          // Untouched items are always preserved.
+          type ChecklistItem = { id: string; text: string; done: boolean; _remove?: boolean };
+          const existingItems: ChecklistItem[] =
+            Array.isArray(existingPayload.items) ? existingPayload.items : [];
+          const incomingItems: ChecklistItem[] = op.payload.items as ChecklistItem[];
+          const incomingById = new Map(incomingItems.map((it) => [it.id, it]));
+
+          // Process existing items: update or drop based on incoming
+          const merged: ChecklistItem[] = [];
+          for (const it of existingItems) {
+            const incoming = incomingById.get(it.id);
+            if (!incoming) {
+              merged.push(it); // untouched — preserve as-is
+            } else if (!incoming._remove) {
+              const { _remove: _, ...rest } = incoming;
+              merged.push({ ...it, ...rest }); // update in place
+            }
+            // if _remove: true — omit (delete)
+          }
+          // Append genuinely new items (ids not in existing)
+          const existingIds = new Set(existingItems.map((it) => it.id));
+          for (const it of incomingItems) {
+            if (!existingIds.has(it.id) && !it._remove) {
+              const { _remove: _, ...rest } = it;
+              merged.push(rest as ChecklistItem);
+            }
+          }
+          newPayload = { ...existingPayload, ...op.payload, items: merged };
+        } else {
+          newPayload = { ...existingPayload, ...op.payload };
+        }
         const newTitle = op.title ?? existing.title;
         let completedAt = existing.completed_at;
         if (op.status === "done" && !completedAt) completedAt = now;
@@ -261,12 +306,22 @@ router.post("/chat", async (req, res): Promise<void> => {
   try {
     const { openai } = await import("@workspace/integrations-openai-ai-server");
 
-    const currentObjects = await db
-      .select({ id: daydeskObjects.id, type: daydeskObjects.type, title: daydeskObjects.title, bucket: daydeskObjects.bucket, status: daydeskObjects.status })
+    const currentObjectsRaw = await db
+      .select({ id: daydeskObjects.id, type: daydeskObjects.type, title: daydeskObjects.title, bucket: daydeskObjects.bucket, status: daydeskObjects.status, payload: daydeskObjects.payload })
       .from(daydeskObjects)
       .where(ne(daydeskObjects.status, "discarded"))
       .orderBy(desc(daydeskObjects.updated_at))
       .limit(30);
+
+    // Include payload in context but cap checklist items to 20 to keep tokens reasonable
+    const currentObjects = currentObjectsRaw.map((obj) => {
+      let parsedPayload: Record<string, unknown> = {};
+      try { parsedPayload = JSON.parse(obj.payload ?? "{}"); } catch { /* ignore */ }
+      if (obj.type === "checklist" && Array.isArray(parsedPayload.items)) {
+        parsedPayload = { ...parsedPayload, items: (parsedPayload.items as unknown[]).slice(0, 20) };
+      }
+      return { ...obj, payload: parsedPayload };
+    });
 
     const mediaContext = mediaRows.length > 0
       ? `\nThe user has attached ${mediaRows.length} image(s). Their URLs: ${mediaRows.map((m) => m.url).join(", ")}. If creating a media card, set imageUrl to the first URL.`
