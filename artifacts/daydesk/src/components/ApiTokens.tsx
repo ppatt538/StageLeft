@@ -62,7 +62,7 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="flex-1 font-mono text-xs bg-background border border-border rounded-lg px-3 py-2 overflow-hidden">
+        <div className="flex-1 font-mono text-xs bg-background border border-border rounded-lg px-3 py-2 overflow-x-auto break-all">
           {visible ? token : '•'.repeat(Math.min(token.length, 40))}
         </div>
         <button
@@ -168,9 +168,18 @@ export function ApiTokens({ open, onClose }: ApiTokensProps) {
     }
   };
 
+  const [urlCopied, setUrlCopied] = useState(false);
+  const chatUrl = `${window.location.origin}/api/chat`;
+
+  const copyUrl = async () => {
+    await navigator.clipboard.writeText(chatUrl);
+    setUrlCopied(true);
+    setTimeout(() => setUrlCopied(false), 2000);
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-lg max-h-[85vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Key className="h-4 w-4" />
@@ -272,13 +281,27 @@ export function ApiTokens({ open, onClose }: ApiTokensProps) {
 
           <div className="rounded-xl bg-muted/50 px-3 py-3 text-xs text-muted-foreground space-y-1.5">
             <p className="font-medium text-foreground">Apple Shortcuts example</p>
-            <p><span className="font-mono">POST /api/chat</span></p>
-            <p>Body (JSON):{' '}
-              <span className="font-mono">{`{"message": "remind me to call John at 3pm"}`}</span>
-            </p>
-            <p>Header:{' '}
-              <span className="font-mono">Authorization: Bearer &lt;token&gt;</span>
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="shrink-0">POST</span>
+              <code className="flex-1 font-mono bg-background border border-border rounded px-2 py-1 overflow-x-auto break-all">
+                {chatUrl}
+              </code>
+              <button
+                onClick={copyUrl}
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                title="Copy URL"
+              >
+                {urlCopied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+            <p>Body (JSON):</p>
+            <code className="block font-mono bg-background border border-border rounded px-2 py-1 overflow-x-auto break-all">
+              {`{"message": "remind me to call John at 3pm"}`}
+            </code>
+            <p>Header:</p>
+            <code className="block font-mono bg-background border border-border rounded px-2 py-1 overflow-x-auto break-all">
+              Authorization: Bearer &lt;token&gt;
+            </code>
             <p className="pt-0.5 text-muted-foreground/70">
               The AI handles everything — card type, bucket, details — just like typing in the app.
             </p>
