@@ -8,11 +8,12 @@ interface MediaCardProps {
   card: DaydeskObject;
   onClick?: () => void;
   onUpdate: (card: DaydeskObject) => void;
+  onCardAction?: (action: string) => void;
   className?: string;
   isMobileExpanded?: boolean;
 }
 
-export function MediaCard({ card, onClick, className, isMobileExpanded }: MediaCardProps) {
+export function MediaCard({ card, onClick, onCardAction, className, isMobileExpanded }: MediaCardProps) {
   const imageUrl = card.payload.imageUrl as string | null;
   const ocrText = card.payload.ocrText as string;
 
@@ -29,7 +30,8 @@ export function MediaCard({ card, onClick, className, isMobileExpanded }: MediaC
           title={card.title} 
           icon={<ImageIcon className="w-3.5 h-3.5" />}
           label="Media"
-          onAction={(action) => console.log('Action:', action)}
+          bucket={card.bucket}
+          onAction={(action) => onCardAction?.(action)}
         />
       )}
       

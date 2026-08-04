@@ -154,6 +154,32 @@ export function DeskPage() {
                   cards={filteredCards}
                   onCardClick={(id) => setSelectedCardId(id)}
                   onUpdateCard={handleUpdateCard}
+                  onCardAction={(cardId, action) => {
+                    if (action === 'move-today') {
+                      updateObject.mutate(
+                        { id: cardId, data: { bucket: 'today' } },
+                        { onSuccess: invalidateAll },
+                      );
+                    } else if (action === 'archive') {
+                      updateObject.mutate(
+                        { id: cardId, data: { bucket: 'archive' } },
+                        { onSuccess: invalidateAll },
+                      );
+                    } else if (action === 'pin') {
+                      const card = filteredCards.find((c) => c.id === cardId);
+                      if (card) {
+                        updateObject.mutate(
+                          { id: cardId, data: { priority: card.priority >= 1 ? 0 : 1 } },
+                          { onSuccess: invalidateAll },
+                        );
+                      }
+                    } else if (action === 'delete') {
+                      updateObject.mutate(
+                        { id: cardId, data: { status: 'discarded' } },
+                        { onSuccess: invalidateAll },
+                      );
+                    }
+                  }}
                 />
               </div>
               <div className="block md:hidden">

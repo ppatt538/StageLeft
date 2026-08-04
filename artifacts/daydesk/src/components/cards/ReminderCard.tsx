@@ -8,11 +8,12 @@ interface ReminderCardProps {
   card: DaydeskObject;
   onClick?: () => void;
   onUpdate: (card: DaydeskObject) => void;
+  onCardAction?: (action: string) => void;
   className?: string;
   isMobileExpanded?: boolean;
 }
 
-export function ReminderCard({ card, onClick, className, isMobileExpanded }: ReminderCardProps) {
+export function ReminderCard({ card, onClick, onCardAction, className, isMobileExpanded }: ReminderCardProps) {
   // Reminders use `when`; events use `start`/`end`
   const isEvent = card.type === 'event';
   const when = (isEvent ? card.payload.start : card.payload.when) as string | undefined;
@@ -44,7 +45,8 @@ export function ReminderCard({ card, onClick, className, isMobileExpanded }: Rem
           title={card.title} 
           icon={<Clock className="w-3.5 h-3.5" />}
           label="Reminder"
-          onAction={(action) => console.log('Action:', action)}
+          bucket={card.bucket}
+          onAction={(action) => onCardAction?.(action)}
         />
       )}
       

@@ -8,11 +8,12 @@ interface NoteCardProps {
   card: DaydeskObject;
   onClick?: () => void;
   onUpdate: (card: DaydeskObject) => void;
+  onCardAction?: (action: string) => void;
   className?: string;
   isMobileExpanded?: boolean;
 }
 
-export function NoteCard({ card, onClick, className, isMobileExpanded }: NoteCardProps) {
+export function NoteCard({ card, onClick, onCardAction, className, isMobileExpanded }: NoteCardProps) {
   const markdown = (card.payload.markdown as string) || '';
   
   return (
@@ -28,7 +29,8 @@ export function NoteCard({ card, onClick, className, isMobileExpanded }: NoteCar
           title={card.title} 
           icon={<AlignLeft className="w-3.5 h-3.5" />}
           label="Note"
-          onAction={(action) => console.log('Action:', action)}
+          bucket={card.bucket}
+          onAction={(action) => onCardAction?.(action)}
         />
       )}
       

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { DaydeskObject } from '../types/daydesk';
-import { X, Archive, Pin, Trash2, Plus, GripVertical } from 'lucide-react';
+import { X, Archive, Pin, Trash2, Plus, GripVertical, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -134,6 +134,11 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
+  const handleMoveToToday = () => {
+    onUpdateCard({ ...draft, bucket: 'today' });
+    onClose();
+  };
+
   const handleArchive = () => {
     onUpdateCard({ ...draft, bucket: 'archive' });
     onClose();
@@ -178,6 +183,15 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
             {/* Toolbar */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 flex-shrink-0">
               <div className="flex gap-1">
+                {draft.bucket !== 'today' && (
+                  <button
+                    onClick={handleMoveToToday}
+                    title="Move to Today"
+                    className="p-2 rounded-lg text-amber-500 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                  >
+                    <Sun className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={handleArchive}
                   title="Archive"

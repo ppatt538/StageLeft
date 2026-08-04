@@ -1,9 +1,10 @@
 import React from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Sun } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
+  DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 
@@ -11,10 +12,13 @@ interface CardHeaderProps {
   title: string;
   icon: React.ReactNode;
   label: string;
-  onAction: (action: 'archive' | 'pin' | 'delete') => void;
+  bucket?: string;
+  onAction: (action: 'archive' | 'pin' | 'delete' | 'move-today') => void;
 }
 
-export function CardHeader({ title, icon, label, onAction }: CardHeaderProps) {
+export function CardHeader({ title, icon, label, bucket, onAction }: CardHeaderProps) {
+  const showMoveToToday = bucket === 'week' || bucket === 'archive';
+
   return (
     <div className="flex items-start justify-between p-4 pb-2">
       <div className="flex flex-col gap-1.5 min-w-0 pr-2">
@@ -37,7 +41,19 @@ export function CardHeader({ title, icon, label, onAction }: CardHeaderProps) {
             <MoreHorizontal className="w-4 h-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40 rounded-xl">
+        <DropdownMenuContent align="end" className="w-44 rounded-xl">
+          {showMoveToToday && (
+            <>
+              <DropdownMenuItem
+                className="gap-2"
+                onClick={(e) => { e.stopPropagation(); onAction('move-today'); }}
+              >
+                <Sun className="w-3.5 h-3.5 text-amber-500" />
+                Move to Today
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('pin'); }}>
             Pin to top
           </DropdownMenuItem>

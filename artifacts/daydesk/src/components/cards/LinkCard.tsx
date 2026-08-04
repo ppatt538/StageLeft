@@ -8,11 +8,12 @@ interface LinkCardProps {
   card: DaydeskObject;
   onClick?: () => void;
   onUpdate: (card: DaydeskObject) => void;
+  onCardAction?: (action: string) => void;
   className?: string;
   isMobileExpanded?: boolean;
 }
 
-export function LinkCard({ card, onClick, className, isMobileExpanded }: LinkCardProps) {
+export function LinkCard({ card, onClick, onCardAction, className, isMobileExpanded }: LinkCardProps) {
   const url = card.payload.url as string;
   const summary = card.payload.summary as string;
   
@@ -34,7 +35,8 @@ export function LinkCard({ card, onClick, className, isMobileExpanded }: LinkCar
           title={card.title} 
           icon={<LinkIcon className="w-3.5 h-3.5" />}
           label="Link"
-          onAction={(action) => console.log('Action:', action)}
+          bucket={card.bucket}
+          onAction={(action) => onCardAction?.(action)}
         />
       )}
       

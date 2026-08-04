@@ -13,7 +13,7 @@ import {
 import {
   CheckSquare, AlignLeft, Clock, Link as LinkIcon,
   Image as ImageIcon, ChevronRight,
-  CalendarDays, Pin, Trash2, Pencil,
+  CalendarDays, Pin, Trash2, Pencil, Sun,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -60,9 +60,9 @@ function getMediaDisplayTitle(title: string, payload: Record<string, unknown>): 
 
 // ─── Swipe geometry ───────────────────────────────────────────────────────────
 
-const LEFT_STRIP_W  = 184; // 3 × ~58px buttons + gaps
-const RIGHT_STRIP_W = 72;  // 1 × 64px edit button
-const AUTO_DELETE_X = -(LEFT_STRIP_W * 1.7); // commit-to-delete threshold
+const LEFT_STRIP_W_3 = 184; // 3 × ~58px buttons + gaps (today tab)
+const LEFT_STRIP_W_4 = 244; // 4 × ~58px buttons + gaps (week/archive tabs)
+const RIGHT_STRIP_W  = 72;  // 1 × 64px edit button
 
 // ─── Action button ────────────────────────────────────────────────────────────
 
@@ -121,6 +121,11 @@ function SwipeableCard({
 
   const isThisOpen = openSwipeId === card.id;
 
+  // Dynamic strip width: 4 buttons when card can move to Today, 3 otherwise
+  const showMoveToToday = card.bucket === 'week' || card.bucket === 'archive';
+  const LEFT_STRIP_W    = showMoveToToday ? LEFT_STRIP_W_4 : LEFT_STRIP_W_3;
+  const AUTO_DELETE_X   = -(LEFT_STRIP_W * 1.7);
+
   // ── Opacity transforms (visual feedback while dragging) ───────────────────
 
   const leftOpacity  = useTransform(x, [-LEFT_STRIP_W, -30, 0], [1, 0.7, 0]);
@@ -155,6 +160,12 @@ function SwipeableCard({
     snapBack();
     if (onMoveCard) onMoveCard(card.id, { bucket: 'week' });
     else onUpdateCard({ ...card, bucket: 'week' });
+  };
+
+  const handleMoveToToday = () => {
+    snapBack();
+    if (onMoveCard) onMoveCard(card.id, { bucket: 'today' });
+    else onUpdateCard({ ...card, bucket: 'today' });
   };
 
   const handlePin = () => {
@@ -284,6 +295,9 @@ function SwipeableCard({
           stripDir !== 'left' && 'pointer-events-none',
         )}
       >
+        {showMoveToToday && (
+          <ActionBtn icon={Sun} label="Today" colorClass="bg-amber-500 text-white" onClick={handleMoveToToday} />
+        )}
         <ActionBtn icon={CalendarDays} label="Week"   colorClass="bg-blue-500 text-white"  onClick={handleMoveToWeek} />
         <ActionBtn icon={Pin}          label="Pin"    colorClass="bg-amber-400 text-white"  onClick={handlePin} />
         <ActionBtn icon={Trash2}       label="Delete" colorClass="bg-red-500 text-white"    onClick={handleDelete} />

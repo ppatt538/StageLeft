@@ -10,9 +10,10 @@ interface CardGridProps {
   cards: DaydeskObject[];
   onCardClick: (id: string) => void;
   onUpdateCard: (card: DaydeskObject) => void;
+  onCardAction?: (cardId: string, action: string) => void;
 }
 
-export function CardGrid({ cards, onCardClick, onUpdateCard }: CardGridProps) {
+export function CardGrid({ cards, onCardClick, onUpdateCard, onCardAction }: CardGridProps) {
   return (
     <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
       {cards.map(card => {
@@ -20,6 +21,7 @@ export function CardGrid({ cards, onCardClick, onUpdateCard }: CardGridProps) {
           card,
           onClick: () => onCardClick(card.id),
           onUpdate: onUpdateCard,
+          onCardAction: (action: string) => onCardAction?.(card.id, action),
           className: "break-inside-avoid mb-4"
         };
         

@@ -8,11 +8,12 @@ interface ChecklistCardProps {
   card: DaydeskObject;
   onClick?: () => void;
   onUpdate: (card: DaydeskObject) => void;
+  onCardAction?: (action: string) => void;
   className?: string;
   isMobileExpanded?: boolean;
 }
 
-export function ChecklistCard({ card, onClick, onUpdate, className, isMobileExpanded }: ChecklistCardProps) {
+export function ChecklistCard({ card, onClick, onUpdate, onCardAction, className, isMobileExpanded }: ChecklistCardProps) {
   const items = (card.payload.items as any[]) || [];
   
   const handleToggle = (e: React.MouseEvent, id: string) => {
@@ -36,7 +37,8 @@ export function ChecklistCard({ card, onClick, onUpdate, className, isMobileExpa
           title={card.title} 
           icon={<CheckSquare className="w-3.5 h-3.5" />}
           label="Checklist"
-          onAction={(action) => console.log('Action:', action)}
+          bucket={card.bucket}
+          onAction={(action) => onCardAction?.(action)}
         />
       )}
       

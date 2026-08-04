@@ -53,6 +53,7 @@ RULES:
 - For reminders/events, infer date/time from context (today = current date: ${new Date().toLocaleDateString("en-CA")}).
 - If user says "done", "finished", "mark X as done" → op "update" with status "done".
 - If user says "delete", "remove", "get rid of" → op "delete".
+- If user says "move X to today", "bring X back to today", "promote X to today", "pull X into today" → op "move" with bucket "today". The current cards context includes each card's bucket field so you can identify which cards are in "week" or "archive".
 - If user is just chatting (no card to create/modify) → return ops: [] and a helpful message.
 - Always return valid JSON. Never wrap in markdown code blocks.
 
