@@ -9,6 +9,7 @@ import {
 } from "../lib/daydesk-db";
 import { SendChatBody, SendChatResponse } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
+import { requireBearerToken } from "../lib/api-tokens";
 
 const router: IRouter = Router();
 
@@ -272,7 +273,7 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
 
 // ─── POST /chat ───────────────────────────────────────────────────────────────
 
-router.post("/chat", async (req, res): Promise<void> => {
+router.post("/chat", requireBearerToken("write"), async (req, res): Promise<void> => {
   const body = SendChatBody.safeParse(req.body);
   if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
 

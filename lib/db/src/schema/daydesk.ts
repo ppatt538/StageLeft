@@ -59,8 +59,19 @@ export const daydeskMedia = pgTable("daydesk_media", {
 // ─── Rollover state (single-row sentinel) ─────────────────────────────────────
 
 export const daydeskRolloverState = pgTable("daydesk_rollover_state", {
-  id:        integer("id").primaryKey(),   // always 1
+  id:        integer("id").primaryKey(),
   last_date: text("last_date").notNull(),
+});
+
+// ─── API tokens ───────────────────────────────────────────────────────────────
+
+export const daydeskApiTokens = pgTable("daydesk_api_tokens", {
+  id:           text("id").primaryKey(),
+  name:         text("name").notNull(),
+  token_hash:   text("token_hash").notNull().unique(),
+  scopes:       text("scopes").notNull().default("read"),
+  created_at:   text("created_at").notNull(),
+  last_used_at: text("last_used_at"),
 });
 
 // ─── Undo log ─────────────────────────────────────────────────────────────────
@@ -71,9 +82,9 @@ export const daydeskUndoLog = pgTable(
     id:         text("id").primaryKey(),
     message_id: text("message_id").notNull(),
     object_id:  text("object_id").notNull(),
-    action:     text("action").notNull(),   // create | update | delete | move
+    action:     text("action").notNull(),
     before_row: text("before_row"),
-    created_at: text("created_at").notNull(), // used for DESC ordering (replaces SQLite rowid)
+    created_at: text("created_at").notNull(),
   },
   (t) => [
     index("idx_daydesk_undo_log_message_id").on(t.message_id),

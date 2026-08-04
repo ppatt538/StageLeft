@@ -12,12 +12,13 @@ import {
   UpdateObjectParams,   UpdateObjectBody, UpdateObjectResponse,
   DeleteObjectParams,   DeleteObjectResponse,
 } from "@workspace/api-zod";
+import { requireBearerToken } from "../lib/api-tokens";
 
 const router: IRouter = Router();
 
 // ─── GET /objects ─────────────────────────────────────────────────────────────
 
-router.get("/objects", async (req, res): Promise<void> => {
+router.get("/objects", requireBearerToken("read"), async (req, res): Promise<void> => {
   // Run rollover lazily on each list request (at most once per calendar day)
   await maybeRollover();
 
@@ -46,7 +47,7 @@ router.get("/objects", async (req, res): Promise<void> => {
 
 // ─── GET /objects/:id ─────────────────────────────────────────────────────────
 
-router.get("/objects/:id", async (req, res): Promise<void> => {
+router.get("/objects/:id", requireBearerToken("read"), async (req, res): Promise<void> => {
   const params = GetObjectParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 

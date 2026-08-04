@@ -6,6 +6,7 @@ import messagesRouter from "./messages";
 import rolloverRouter from "./rollover";
 import uploadRouter from "./upload";
 import undoRouter from "./undo";
+import tokensRouter from "./tokens";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(messagesRouter);
 router.use(rolloverRouter);
 router.use(uploadRouter);
 router.use(undoRouter);
+router.use(tokensRouter);
 
 export default router;

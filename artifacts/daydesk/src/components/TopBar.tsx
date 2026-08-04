@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, SearchIcon, X, Clock } from 'lucide-react';
+import { Search, SearchIcon, X, Clock, Key } from 'lucide-react';
 
 interface TopBarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onHistoryOpen?: () => void;
+  onApiTokensOpen?: () => void;
 }
 
-export function TopBar({ searchQuery, onSearchChange, onHistoryOpen }: TopBarProps) {
+export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokensOpen }: TopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -17,7 +18,6 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen }: TopBarPro
     return () => clearInterval(timer);
   }, []);
 
-  // When parent clears searchQuery (e.g. tab switch), close mobile search too
   useEffect(() => {
     if (!searchQuery) setSearchOpen(false);
   }, [searchQuery]);
@@ -34,9 +34,7 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen }: TopBarPro
     debounceRef.current = setTimeout(() => onSearchChange(value), 200);
   };
 
-  const handleClear = () => {
-    onSearchChange('');
-  };
+  const handleClear = () => { onSearchChange(''); };
 
   return (
     <header className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur-md border-b border-border/60 h-12 md:h-14">
@@ -47,10 +45,8 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen }: TopBarPro
           </div>
         )}
 
-        <div
-          className={`flex-1 flex items-center justify-end md:justify-center transition-all ${searchOpen ? 'w-full' : ''}`}
-        >
-          {/* Desktop search — controlled input so tab-switch clearing works */}
+        <div className={`flex-1 flex items-center justify-end md:justify-center transition-all ${searchOpen ? 'w-full' : ''}`}>
+          {/* Desktop search */}
           <div className="hidden md:flex relative w-full max-w-lg">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <input
@@ -62,11 +58,7 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen }: TopBarPro
               data-testid="input-search"
             />
             {searchQuery && (
-              <button
-                onClick={handleClear}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Clear search"
-              >
+              <button onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" aria-label="Clear search">
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
@@ -88,31 +80,23 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen }: TopBarPro
                     data-testid="input-search-mobile"
                   />
                 </div>
-                <button
-                  onClick={() => { setSearchOpen(false); handleClear(); }}
-                  className="text-sm font-medium text-muted-foreground p-2"
-                  data-testid="button-cancel-search"
-                >
+                <button onClick={() => { setSearchOpen(false); handleClear(); }} className="text-sm font-medium text-muted-foreground p-2" data-testid="button-cancel-search">
                   Cancel
                 </button>
               </div>
             ) : (
               <>
-                <button
-                  onClick={() => setSearchOpen(true)}
-                  className="p-2 text-muted-foreground hover:text-foreground"
-                  data-testid="button-open-search"
-                >
+                <button onClick={() => setSearchOpen(true)} className="p-2 text-muted-foreground hover:text-foreground" data-testid="button-open-search">
                   <SearchIcon className="h-5 w-5" />
                 </button>
                 {onHistoryOpen && (
-                  <button
-                    onClick={onHistoryOpen}
-                    className="p-2 -mr-2 text-muted-foreground hover:text-foreground"
-                    title="Conversation history"
-                    data-testid="button-history"
-                  >
+                  <button onClick={onHistoryOpen} className="p-2 text-muted-foreground hover:text-foreground" title="Conversation history" data-testid="button-history">
                     <Clock className="h-5 w-5" />
+                  </button>
+                )}
+                {onApiTokensOpen && (
+                  <button onClick={onApiTokensOpen} className="p-2 -mr-2 text-muted-foreground hover:text-foreground" title="API access tokens" data-testid="button-api-tokens">
+                    <Key className="h-5 w-5" />
                   </button>
                 )}
               </>
@@ -126,13 +110,13 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen }: TopBarPro
               America/New_York • {formattedTime}
             </span>
             {onHistoryOpen && (
-              <button
-                onClick={onHistoryOpen}
-                className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Conversation history"
-                data-testid="button-history"
-              >
+              <button onClick={onHistoryOpen} className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Conversation history" data-testid="button-history">
                 <Clock className="h-4 w-4" />
+              </button>
+            )}
+            {onApiTokensOpen && (
+              <button onClick={onApiTokensOpen} className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="API access tokens" data-testid="button-api-tokens">
+                <Key className="h-4 w-4" />
               </button>
             )}
           </div>

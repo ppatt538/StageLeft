@@ -12,6 +12,7 @@ import { CardGrid } from '../components/CardGrid';
 import { CardList } from '../components/CardList';
 import { CardDetail } from '../components/CardDetail';
 import { ChatHistory } from '../components/ChatHistory';
+import { ApiTokens } from '../components/ApiTokens';
 import { ObjectBucket, DaydeskObject } from '../types/daydesk';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -53,6 +54,7 @@ export function DeskPage() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [apiTokensOpen, setApiTokensOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch all (for counts + history card chips)
@@ -130,6 +132,7 @@ export function DeskPage() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onHistoryOpen={() => setHistoryOpen(true)}
+        onApiTokensOpen={() => setApiTokensOpen(true)}
       />
 
       <main className="flex-1 flex flex-col w-full max-w-[1400px] mx-auto pb-32">
@@ -219,6 +222,11 @@ export function DeskPage() {
         onClose={() => setHistoryOpen(false)}
         allObjects={allObjectsTyped}
         onOpenCard={handleOpenCardFromHistory}
+      />
+
+      <ApiTokens
+        open={apiTokensOpen}
+        onClose={() => setApiTokensOpen(false)}
       />
     </div>
   );
