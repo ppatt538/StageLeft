@@ -84,10 +84,18 @@ export function requireBearerToken(requiredScope: "read" | "write") {
 
     const hash = hashToken(plaintext);
 
-    const [row] = await db
-      .select()
-      .from(daydeskApiTokens)
-      .where(eq(daydeskApiTokens.token_hash, hash));
+    let row: typeof daydeskApiTokens.$inferSelect | undefined;
+    try {
+      [row] = await db
+        .select()
+        .from(daydeskApiTokens)
+        .where(eq(daydeskApiTokens.token_hash, hash));
+    } catch (err) {
+      // DB error (e.g. table not yet migrated in production) — fail closed with
+      // a clear 500 so the caller gets a response instead of a timeout.
+      res.status(500).json({ error: "Token validation unavailable — database not ready" });
+      return;
+    }
 
     if (!row) {
       res.status(401).json({ error: "Invalid API token" });
