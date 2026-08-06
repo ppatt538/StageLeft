@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, SearchIcon, X, Clock, Key } from 'lucide-react';
+import { Search, SearchIcon, X, Clock, Key, CalendarDays } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TopBarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onHistoryOpen?: () => void;
   onApiTokensOpen?: () => void;
+  onAgendaOpen?: () => void;
+  overdueCount?: number;
 }
 
-export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokensOpen }: TopBarProps) {
+export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokensOpen, onAgendaOpen, overdueCount = 0 }: TopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,10 +98,11 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokens
                   </button>
                 )}
                 {onApiTokensOpen && (
-                  <button onClick={onApiTokensOpen} className="p-2 -mr-2 text-muted-foreground hover:text-foreground" title="API access tokens" data-testid="button-api-tokens">
+                  <button onClick={onApiTokensOpen} className="p-2 text-muted-foreground hover:text-foreground" title="API access tokens" data-testid="button-api-tokens">
                     <Key className="h-5 w-5" />
                   </button>
                 )}
+                {/* Agenda is desktop-only — hidden on mobile */}
               </>
             )}
           </div>
@@ -117,6 +121,21 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokens
             {onApiTokensOpen && (
               <button onClick={onApiTokensOpen} className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="API access tokens" data-testid="button-api-tokens">
                 <Key className="h-4 w-4" />
+              </button>
+            )}
+            {onAgendaOpen && (
+              <button
+                onClick={onAgendaOpen}
+                className={cn(
+                  'relative p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors',
+                )}
+                title="Agenda"
+                data-testid="button-agenda"
+              >
+                <CalendarDays className="h-4 w-4" />
+                {overdueCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-destructive" />
+                )}
               </button>
             )}
           </div>

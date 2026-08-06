@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListObjects,
@@ -13,6 +13,7 @@ import { CardList } from '../components/CardList';
 import { CardDetail } from '../components/CardDetail';
 import { ChatHistory } from '../components/ChatHistory';
 import { ApiTokens } from '../components/ApiTokens';
+import { AgendaPanel, countOverdueAgendaItems } from '../components/AgendaPanel';
 import { ObjectBucket, DaydeskObject } from '../types/daydesk';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -55,7 +56,23 @@ export function DeskPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [apiTokensOpen, setApiTokensOpen] = useState(false);
+  const [agendaOpen, setAgendaOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('daydesk:agenda-open') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const queryClient = useQueryClient();
+
+  // Persist agenda open/close to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('daydesk:agenda-open', String(agendaOpen));
+    } catch {
+      // ignore
+    }
+  }, [agendaOpen]);
 
   // Fetch all (for counts + history card chips)
   const { data: allObjects = [] } = useListObjects(
@@ -88,6 +105,11 @@ export function DeskPage() {
     });
     return c;
   }, [allObjects]);
+
+  const overdueCount = useMemo(
+    () => countOverdueAgendaItems(allObjects as DaydeskObject[]),
+    [allObjects],
+  );
 
   // Used by card components: receives updated card with new payload (e.g. checklist toggle)
   const handleUpdateCard = useCallback(
@@ -133,9 +155,13 @@ export function DeskPage() {
         onSearchChange={setSearchQuery}
         onHistoryOpen={() => setHistoryOpen(true)}
         onApiTokensOpen={() => setApiTokensOpen(true)}
+        onAgendaOpen={() => setAgendaOpen((o) => !o)}
+        overdueCount={overdueCount}
       />
 
-      <main className="flex-1 flex flex-col w-full max-w-[1400px] mx-auto pb-32">
+      <main
+        className={`flex-1 flex flex-col w-full max-w-[1400px] mx-auto pb-32 transition-all duration-300${agendaOpen ? ' md:pr-[300px]' : ''}`}
+      >
         <TabBar activeTab={activeTab} onTabChange={handleTabChange} counts={counts} />
 
         <div className="flex-1 px-4 md:px-6 py-4">
@@ -253,6 +279,13 @@ export function DeskPage() {
       <ApiTokens
         open={apiTokensOpen}
         onClose={() => setApiTokensOpen(false)}
+      />
+
+      <AgendaPanel
+        isOpen={agendaOpen}
+        onClose={() => setAgendaOpen(false)}
+        allObjects={allObjectsTyped}
+        onSelect={(card) => setSelectedCardId(card.id)}
       />
     </div>
   );
