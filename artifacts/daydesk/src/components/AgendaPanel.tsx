@@ -65,10 +65,14 @@ function AgendaSection({
   label,
   items,
   onSelect,
+  displayMode = 'time',
+  dateFormat = 'weekday',
 }: {
   label: string;
   items: AgendaItem[];
   onSelect: (card: DaydeskObject) => void;
+  displayMode?: 'time' | 'date';
+  dateFormat?: 'weekday' | 'month';
 }) {
   if (items.length === 0) return null;
 
@@ -85,13 +89,27 @@ function AgendaSection({
 
       <div className="flex flex-col gap-1">
         {items.map(({ card, date, isOverdue, hasTimed }) => {
-          const timeStr = hasTimed
-            ? new Intl.DateTimeFormat('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-              }).format(date)
-            : '—';
+          let labelStr: string;
+          if (displayMode === 'date') {
+            labelStr =
+              dateFormat === 'weekday'
+                ? new Intl.DateTimeFormat('en-US', {
+                    weekday: 'short',
+                    day: 'numeric',
+                  }).format(date)
+                : new Intl.DateTimeFormat('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  }).format(date);
+          } else {
+            labelStr = hasTimed
+              ? new Intl.DateTimeFormat('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                }).format(date)
+              : '—';
+          }
 
           return (
             <button
@@ -116,14 +134,14 @@ function AgendaSection({
                 )}
               />
 
-              {/* Time */}
+              {/* Time or Date */}
               <span
                 className={cn(
-                  'flex-shrink-0 text-[11px] font-medium tabular-nums w-[52px]',
+                  'flex-shrink-0 text-[11px] font-medium tabular-nums w-[60px]',
                   isOverdue ? 'text-destructive' : 'text-muted-foreground',
                 )}
               >
-                {timeStr}
+                {labelStr}
               </span>
 
               {/* Title */}
@@ -250,9 +268,9 @@ export function AgendaPanel({ isOpen, onClose, allObjects, onSelect }: AgendaPan
                     onSelect={onSelect}
                   />
                 )}
-                <AgendaSection label="Today" items={sections.today} onSelect={onSelect} />
-                <AgendaSection label="This Week" items={sections.week} onSelect={onSelect} />
-                <AgendaSection label="This Month" items={sections.month} onSelect={onSelect} />
+                <AgendaSection label="Today" items={sections.today} onSelect={onSelect} displayMode="time" />
+                <AgendaSection label="This Week" items={sections.week} onSelect={onSelect} displayMode="date" dateFormat="weekday" />
+                <AgendaSection label="This Month" items={sections.month} onSelect={onSelect} displayMode="date" dateFormat="month" />
               </>
             )}
           </div>
