@@ -14,6 +14,7 @@ import { CardDetail } from '../components/CardDetail';
 import { ChatHistory } from '../components/ChatHistory';
 import { ApiTokens } from '../components/ApiTokens';
 import { AgendaPanel, countOverdueAgendaItems } from '../components/AgendaPanel';
+import { AgendaRibbon } from '../components/AgendaRibbon';
 import { ObjectBucket, DaydeskObject } from '../types/daydesk';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -172,6 +173,11 @@ export function DeskPage() {
         className={`flex-1 flex flex-col w-full max-w-[1400px] mx-auto pb-32 transition-all duration-300${agendaOpen ? ' md:pr-[300px]' : ''}`}
       >
         <TabBar activeTab={activeTab} onTabChange={handleTabChange} counts={counts} />
+
+        <AgendaRibbon
+          allObjects={allObjectsTyped}
+          onSelect={(card) => setSelectedCardId(card.id)}
+        />
 
         <div className="flex-1 px-4 md:px-6 py-4">
           {isLoading ? (
