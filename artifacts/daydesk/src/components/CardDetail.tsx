@@ -65,6 +65,41 @@ function InlineText({
   return <input type="text" {...shared} />;
 }
 
+// ─── Notes textarea (shared across all card types) ────────────────────────────
+
+function NotesField({
+  value,
+  onChange,
+  onBlur,
+  primary = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onBlur: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <div className={primary ? '' : 'pt-2 border-t border-border/30'}>
+      {!primary && (
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+          Notes
+        </div>
+      )}
+      <InlineText
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        multiline
+        className={cn(
+          'text-sm leading-relaxed text-foreground/90',
+          primary ? 'min-h-[160px]' : 'min-h-[80px]',
+        )}
+        placeholder={primary ? 'Write something…' : 'Add notes…'}
+      />
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }: CardDetailProps) {
@@ -120,7 +155,6 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
     const newItems = [...items, { id: newId, text: '', done: false }];
     patchPayload({ items: newItems });
     pendingRef.current = true;
-    // Focus new item after render
     setTimeout(() => {
       document.getElementById(`item-${newId}`)?.focus();
     }, 50);
@@ -131,6 +165,16 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
     patchPayload({ items: newItems });
     pendingRef.current = true;
   };
+
+  // ─── Notes value helpers ────────────────────────────────────────────────────
+
+  // For note-type cards: notes column is primary; fall back to legacy payload.markdown
+  const notesValue =
+    draft.type === 'note'
+      ? (draft.notes ?? (draft.payload.markdown as string) ?? '')
+      : (draft.notes ?? '');
+
+  const onNotesChange = (v: string) => patch({ notes: v });
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
@@ -246,6 +290,16 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
                   />
                 </div>
 
+                {/* ── Note (notes are primary content) ── */}
+                {draft.type === 'note' && (
+                  <NotesField
+                    value={notesValue}
+                    onChange={onNotesChange}
+                    onBlur={save}
+                    primary
+                  />
+                )}
+
                 {/* ── Checklist ── */}
                 {draft.type === 'checklist' && (
                   <div className="flex flex-col gap-1">
@@ -281,18 +335,6 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
                       Add item
                     </button>
                   </div>
-                )}
-
-                {/* ── Note ── */}
-                {draft.type === 'note' && (
-                  <InlineText
-                    value={(draft.payload.markdown as string) ?? ''}
-                    onChange={(v) => patchPayload({ markdown: v })}
-                    onBlur={save}
-                    multiline
-                    className="text-sm leading-relaxed text-foreground/90 min-h-[120px]"
-                    placeholder="Write something..."
-                  />
                 )}
 
                 {/* ── Reminder ── */}
@@ -403,6 +445,15 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
                       />
                     </FieldRow>
                   </div>
+                )}
+
+                {/* ── Notes (all types except note, which has it as primary) ── */}
+                {draft.type !== 'note' && (
+                  <NotesField
+                    value={notesValue}
+                    onChange={onNotesChange}
+                    onBlur={save}
+                  />
                 )}
 
                 {/* Tags */}

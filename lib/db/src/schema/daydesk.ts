@@ -23,6 +23,7 @@ export const daydeskObjects = pgTable(
     search_text:     text("search_text").notNull().default(""),
     ai:              text("ai"),
     links:           text("links").notNull().default("[]"),
+    notes:           text("notes"),
     snooze_until:    text("snooze_until"),
     created_at:      text("created_at").notNull(),
     updated_at:      text("updated_at").notNull(),

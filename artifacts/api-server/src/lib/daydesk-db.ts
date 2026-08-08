@@ -53,6 +53,7 @@ export type DaydeskObject = {
   search_text: string;
   ai: unknown | null;
   links: unknown[];
+  notes: string | null;
   snooze_until: string | null;
   created_at: string;
   updated_at: string;
@@ -86,6 +87,7 @@ export function rowToObject(row: ObjectRow): DaydeskObject {
 export function buildSearchText(
   title: string,
   payload: Record<string, unknown>,
+  notes?: string | null,
 ): string {
   const parts: string[] = [title];
 
@@ -99,6 +101,7 @@ export function buildSearchText(
       if (typeof item.text === "string") parts.push(item.text);
     }
   }
+  if (typeof notes === "string" && notes) parts.push(notes);
 
   return parts.join(" ").toLowerCase();
 }
@@ -110,6 +113,12 @@ export function buildSearchText(
  * Safe to call on every boot — each migration is a no-op when already applied.
  */
 export async function ensureMigrations(): Promise<void> {
+  // Migration: add `notes` column if it doesn't exist yet (for databases
+  // that were created before this column was introduced).
+  await db.execute(
+    sql`ALTER TABLE daydesk_objects ADD COLUMN IF NOT EXISTS notes TEXT`,
+  );
+
   // Migration: legacy bucket='pinned' → bucket='today' with priority=1.
   // Pin is now represented by priority=1 within today/week/archive.
   const now = new Date().toISOString();
@@ -138,7 +147,7 @@ export async function ensureSeeded(): Promise<void> {
 
   const now = new Date().toISOString();
 
-  const seeds: Omit<ObjectRow, "layout" | "ai" | "snooze_until" | "completed_at">[] = [
+  const seeds: Omit<ObjectRow, "layout" | "ai" | "snooze_until" | "completed_at" | "notes">[] = [
     {
       id: nanoid(), type: "checklist", title: "Today's tasks",
       bucket: "today", status: "active", priority: 0,
@@ -211,6 +220,6 @@ export async function ensureSeeded(): Promise<void> {
   ];
 
   await db.insert(daydeskObjects).values(
-    seeds.map((s) => ({ ...s, layout: null, ai: null, snooze_until: null, completed_at: null })),
+    seeds.map((s) => ({ ...s, layout: null, ai: null, snooze_until: null, completed_at: null, notes: null })),
   );
 }

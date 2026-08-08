@@ -20,6 +20,7 @@ export interface DaydeskObject {
   search_text: string;
   ai?: ObjectAi | null;
   links: Record<string, any>[];
+  notes?: string | null;
   snooze_until?: string | null;
   created_at: string;
   updated_at: string;

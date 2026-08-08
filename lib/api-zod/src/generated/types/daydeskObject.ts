@@ -29,6 +29,8 @@ export interface DaydeskObject {
   ai?: ObjectAi | null;
   links: JsonLink[];
   /** @nullable */
+  notes?: string | null;
+  /** @nullable */
   snooze_until?: string | null;
   created_at: string;
   updated_at: string;

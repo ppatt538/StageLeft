@@ -111,7 +111,8 @@ router.patch("/objects/:id", async (req, res): Promise<void> => {
                          ? (patch.layout ? JSON.stringify(patch.layout) : null)
                          : existing.layout,
       payload:         JSON.stringify(newPayload),
-      search_text:     newSearchText,
+      notes:           patch.notes !== undefined ? patch.notes : existing.notes,
+      search_text:     buildSearchText(newTitle, newPayload, patch.notes !== undefined ? patch.notes : existing.notes),
       snooze_until:    patch.snooze_until !== undefined ? patch.snooze_until : existing.snooze_until,
       completed_at:    completedAt,
       updated_at:      now,

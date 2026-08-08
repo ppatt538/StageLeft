@@ -27,10 +27,10 @@ RESPONSE FORMAT (always valid JSON, no markdown fences):
 
 OPERATION TYPES:
 1. Create a card:
-   { "op": "create", "type": "checklist|note|reminder|event|link|media", "title": "...", "bucket": "today|week|archive", "priority": 0, "tags": [], "payload": { ...type-specific } }
+   { "op": "create", "type": "checklist|note|reminder|event|link|media", "title": "...", "bucket": "today|week|archive", "priority": 0, "tags": [], "notes": "optional freeform text", "payload": { ...type-specific } }
 
 2. Update a card (by id):
-   { "op": "update", "id": "...", "title": "...", "bucket": "...", "status": "active|done|snoozed|discarded", "priority": 0, "payload": { ...partial } }
+   { "op": "update", "id": "...", "title": "...", "bucket": "...", "status": "active|done|snoozed|discarded", "priority": 0, "notes": "...", "payload": { ...partial } }
 
 3. Delete a card (by id):
    { "op": "delete", "id": "..." }
@@ -38,9 +38,18 @@ OPERATION TYPES:
 4. Move a card between buckets:
    { "op": "move", "id": "...", "bucket": "today|week|archive" }
 
+NOTES FIELD:
+Every card has an optional top-level "notes" field (plain text, markdown OK).
+- For "note"-type cards: "notes" IS the primary content. Always set it when creating or updating a note card. Leave payload as {}.
+- For other card types (reminder, checklist, link, media): "notes" stores supplemental detail — directions, research results, extra context, etc.
+- To set or replace notes: include "notes": "your text" in create or update.
+- To clear notes: include "notes": null.
+- To update only notes on an existing card: use op "update" with just id + notes.
+- The current cards context includes each card's "notes" value so you can read before appending.
+
 PAYLOAD SHAPES by type:
 - checklist: { "items": [{ "id": "i1", "text": "...", "done": false }] }
-- note:      { "markdown": "..." }
+- note:      {} (notes go in the top-level "notes" field, not payload)
 - reminder:  { "when": "<ISO-8601>", "location": "optional" }
 - event:     { "start": "<ISO-8601>", "end": "<ISO-8601>", "location": "optional" }
 - link:      { "url": "https://...", "title": "...", "summary": "optional" }
@@ -112,15 +121,15 @@ function mockAI(message: string, firstMediaUrl?: string): { message: string; ops
   return {
     message: "Got it — saved as a note.",
     ops: [{ op: "create", type: "note", title: message.slice(0, 60),
-            bucket: "today", priority: 0, tags: [], payload: { markdown: message } }],
+            bucket: "today", priority: 0, tags: [], notes: message, payload: {} }],
   };
 }
 
 // ─── Op types ─────────────────────────────────────────────────────────────────
 
 type Op =
-  | { op: "create"; type: string; title: string; bucket: string; priority: number; tags: string[]; payload: Record<string, unknown> }
-  | { op: "update"; id: string; title?: string; bucket?: string; status?: string; priority?: number; payload?: Record<string, unknown> }
+  | { op: "create"; type: string; title: string; bucket: string; priority: number; tags: string[]; notes?: string | null; payload: Record<string, unknown> }
+  | { op: "update"; id: string; title?: string; bucket?: string; status?: string; priority?: number; notes?: string | null; payload?: Record<string, unknown> }
   | { op: "delete"; id: string }
   | { op: "move";   id: string; bucket: string };
 
@@ -137,6 +146,7 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
       if (op.op === "create") {
         const id      = nanoid();
         const payload = op.payload ?? {};
+        const notes   = op.notes ?? null;
         const [row]   = await tx
           .insert(daydeskObjects)
           .values({
@@ -146,8 +156,9 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
             priority:        op.priority ?? 0,
             tags:            JSON.stringify(op.tags  ?? []),
             payload:         JSON.stringify(payload),
+            notes,
             source:          JSON.stringify({ kind: "chat", messageId }),
-            search_text:     buildSearchText(op.title, payload),
+            search_text:     buildSearchText(op.title, payload, notes),
             links:           "[]",
             created_at:      now, updated_at: now, last_touched_at: now,
           })
@@ -212,6 +223,7 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
           newPayload = { ...existingPayload, ...op.payload };
         }
         const newTitle = op.title ?? existing.title;
+        const newNotes = op.notes !== undefined ? op.notes : existing.notes;
         let completedAt = existing.completed_at;
         if (op.status === "done" && !completedAt) completedAt = now;
         if (op.status && op.status !== "done") completedAt = null;
@@ -222,7 +234,8 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
             title: newTitle, bucket: op.bucket ?? existing.bucket,
             status: op.status ?? existing.status, priority: op.priority ?? existing.priority,
             payload: JSON.stringify(newPayload),
-            search_text: buildSearchText(newTitle, newPayload),
+            notes: newNotes,
+            search_text: buildSearchText(newTitle, newPayload, newNotes),
             completed_at: completedAt, updated_at: now, last_touched_at: now,
           })
           .where(eq(daydeskObjects.id, op.id))
@@ -309,7 +322,7 @@ router.post("/chat", requireBearerToken("write"), async (req, res): Promise<void
     const { openai } = await import("@workspace/integrations-openai-ai-server");
 
     const currentObjectsRaw = await db
-      .select({ id: daydeskObjects.id, type: daydeskObjects.type, title: daydeskObjects.title, bucket: daydeskObjects.bucket, status: daydeskObjects.status, payload: daydeskObjects.payload })
+      .select({ id: daydeskObjects.id, type: daydeskObjects.type, title: daydeskObjects.title, bucket: daydeskObjects.bucket, status: daydeskObjects.status, payload: daydeskObjects.payload, notes: daydeskObjects.notes })
       .from(daydeskObjects)
       .where(ne(daydeskObjects.status, "discarded"))
       .orderBy(desc(daydeskObjects.updated_at))
@@ -322,7 +335,7 @@ router.post("/chat", requireBearerToken("write"), async (req, res): Promise<void
       if (obj.type === "checklist" && Array.isArray(parsedPayload.items)) {
         parsedPayload = { ...parsedPayload, items: (parsedPayload.items as unknown[]).slice(0, 20) };
       }
-      return { ...obj, payload: parsedPayload };
+      return { ...obj, payload: parsedPayload, notes: obj.notes ?? null };
     });
 
     const mediaContext = mediaRows.length > 0

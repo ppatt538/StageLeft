@@ -111,13 +111,22 @@ export function DeskPage() {
     [allObjects],
   );
 
-  // Used by card components: receives updated card with new payload (e.g. checklist toggle)
+  // Used by card components: receives updated card and persists all editable top-level fields.
   const handleUpdateCard = useCallback(
     (updatedCard: DaydeskObject) => {
       updateObject.mutate(
         {
           id: updatedCard.id,
-          data: { payload: updatedCard.payload as Record<string, unknown> },
+          data: {
+            title:        updatedCard.title,
+            bucket:       updatedCard.bucket,
+            status:       updatedCard.status,
+            priority:     updatedCard.priority,
+            tags:         updatedCard.tags,
+            payload:      updatedCard.payload as Record<string, unknown>,
+            notes:        updatedCard.notes ?? null,
+            snooze_until: updatedCard.snooze_until ?? null,
+          },
         },
         { onSuccess: invalidateAll },
       );

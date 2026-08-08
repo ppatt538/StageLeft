@@ -14,7 +14,8 @@ interface NoteCardProps {
 }
 
 export function NoteCard({ card, onClick, onCardAction, className, isMobileExpanded }: NoteCardProps) {
-  const markdown = (card.payload.markdown as string) || '';
+  // notes column is primary; fall back to legacy payload.markdown
+  const markdown = card.notes ?? (card.payload.markdown as string) ?? '';
   
   return (
     <div 

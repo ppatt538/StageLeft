@@ -55,6 +55,7 @@ export const ListObjectsResponseItem = zod.object({
   "needsReview": zod.boolean().nullish()
 }),zod.null()]).optional(),
   "links": zod.array(zod.record(zod.string(), zod.unknown())),
+  "notes": zod.string().nullish(),
   "snooze_until": zod.string().nullish(),
   "created_at": zod.string(),
   "updated_at": zod.string(),
@@ -100,6 +101,7 @@ export const GetObjectResponse = zod.object({
   "needsReview": zod.boolean().nullish()
 }),zod.null()]).optional(),
   "links": zod.array(zod.record(zod.string(), zod.unknown())),
+  "notes": zod.string().nullish(),
   "snooze_until": zod.string().nullish(),
   "created_at": zod.string(),
   "updated_at": zod.string(),
@@ -130,6 +132,7 @@ export const UpdateObjectBody = zod.object({
   "z": zod.number()
 }),zod.null()]).optional(),
   "payload": zod.record(zod.string(), zod.unknown()).optional(),
+  "notes": zod.string().nullish(),
   "snooze_until": zod.string().nullish()
 })
 
@@ -162,6 +165,7 @@ export const UpdateObjectResponse = zod.object({
   "needsReview": zod.boolean().nullish()
 }),zod.null()]).optional(),
   "links": zod.array(zod.record(zod.string(), zod.unknown())),
+  "notes": zod.string().nullish(),
   "snooze_until": zod.string().nullish(),
   "created_at": zod.string(),
   "updated_at": zod.string(),
@@ -206,6 +210,7 @@ export const DeleteObjectResponse = zod.object({
   "needsReview": zod.boolean().nullish()
 }),zod.null()]).optional(),
   "links": zod.array(zod.record(zod.string(), zod.unknown())),
+  "notes": zod.string().nullish(),
   "snooze_until": zod.string().nullish(),
   "created_at": zod.string(),
   "updated_at": zod.string(),
@@ -259,6 +264,7 @@ export const SendChatResponse = zod.object({
   "needsReview": zod.boolean().nullish()
 }),zod.null()]).optional(),
   "links": zod.array(zod.record(zod.string(), zod.unknown())),
+  "notes": zod.string().nullish(),
   "snooze_until": zod.string().nullish(),
   "created_at": zod.string(),
   "updated_at": zod.string(),
