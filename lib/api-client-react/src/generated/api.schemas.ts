@@ -101,6 +101,8 @@ export interface DaydeskObject {
   ai?: ObjectAi | null;
   links: JsonLink[];
   /** @nullable */
+  notes?: string | null;
+  /** @nullable */
   snooze_until?: string | null;
   created_at: string;
   updated_at: string;
@@ -117,6 +119,8 @@ export interface ObjectUpdate {
   tags?: string[];
   layout?: ObjectLayout | null;
   payload?: JsonPayload;
+  /** @nullable */
+  notes?: string | null;
   /** @nullable */
   snooze_until?: string | null;
   /** Set true to pin (float to top of bucket), false to unpin. Translates to priority 1/0. */

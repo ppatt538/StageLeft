@@ -344,6 +344,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/JsonLink"
+        notes:
+          type: ["string", "null"]
         snooze_until:
           type: ["string", "null"]
         created_at:
@@ -391,6 +393,8 @@ components:
             - type: "null"
         payload:
           $ref: "#/components/schemas/JsonPayload"
+        notes:
+          type: ["string", "null"]
         snooze_until:
           type: ["string", "null"]
 
