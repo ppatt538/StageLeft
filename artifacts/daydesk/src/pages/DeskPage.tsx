@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useTheme } from '../hooks/use-theme';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListObjects,
@@ -52,6 +53,7 @@ function BucketEmptyState({ bucket }: { bucket: ObjectBucket }) {
 // ─── DeskPage ─────────────────────────────────────────────────────────────────
 
 export function DeskPage() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<ObjectBucket>('today');
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,6 +169,8 @@ export function DeskPage() {
         onApiTokensOpen={() => setApiTokensOpen(true)}
         onAgendaOpen={() => setAgendaOpen((o) => !o)}
         overdueCount={overdueCount}
+        onThemeToggle={toggleTheme}
+        currentTheme={theme}
       />
 
       <main

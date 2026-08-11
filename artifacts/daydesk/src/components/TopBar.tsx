@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, SearchIcon, X, Clock, Key, CalendarDays } from 'lucide-react';
+import { Search, SearchIcon, X, Clock, Key, CalendarDays, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { Theme } from '../hooks/use-theme';
 
 interface TopBarProps {
   searchQuery: string;
@@ -9,9 +10,11 @@ interface TopBarProps {
   onApiTokensOpen?: () => void;
   onAgendaOpen?: () => void;
   overdueCount?: number;
+  onThemeToggle?: () => void;
+  currentTheme?: Theme;
 }
 
-export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokensOpen, onAgendaOpen, overdueCount = 0 }: TopBarProps) {
+export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokensOpen, onAgendaOpen, overdueCount = 0, onThemeToggle, currentTheme = 'default' }: TopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,6 +105,20 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokens
                     <Key className="h-5 w-5" />
                   </button>
                 )}
+                {onThemeToggle && (
+                  <button
+                    onClick={onThemeToggle}
+                    className={cn(
+                      'p-2 transition-colors',
+                      currentTheme === 'warm'
+                        ? 'text-amber-600'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                    title={currentTheme === 'warm' ? 'Switch to Default theme' : 'Switch to Warm Tactile theme'}
+                  >
+                    <Palette className="h-5 w-5" />
+                  </button>
+                )}
                 {/* Agenda is desktop-only — hidden on mobile */}
               </>
             )}
@@ -136,6 +153,21 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokens
                 {overdueCount > 0 && (
                   <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-destructive" />
                 )}
+              </button>
+            )}
+            {onThemeToggle && (
+              <button
+                onClick={onThemeToggle}
+                className={cn(
+                  'p-1.5 rounded-full transition-colors',
+                  currentTheme === 'warm'
+                    ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                )}
+                title={currentTheme === 'warm' ? 'Switch to Default theme' : 'Switch to Warm Tactile theme'}
+                data-testid="button-theme-toggle"
+              >
+                <Palette className="h-4 w-4" />
               </button>
             )}
           </div>
