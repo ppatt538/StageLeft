@@ -1,0 +1,549 @@
+/* Daydesk — Warm Tactile Drop-in Theme
+   Paste this near the end of your main CSS file, or import it last.
+   Goal: upgrade plain UI into a warmer, tactile, premium planner feel
+   without changing component structure.
+*/
+
+:root {
+  color-scheme: light;
+
+  --bg: #f5f2ee;
+  --bg-top: #fbfaf7;
+  --surface: #fcfbf8;
+  --surface-2: #f2eee8;
+  --surface-3: #ece7e0;
+
+  --text: #20242b;
+  --text-soft: #6f7680;
+  --text-faint: #98a0aa;
+
+  --accent: #7088a4;
+  --accent-strong: #59728f;
+  --accent-soft: #dde6ef;
+
+  --success: #7d9770;
+  --warning: #d6a247;
+
+  --border: rgba(32, 36, 43, 0.08);
+  --border-strong: rgba(32, 36, 43, 0.12);
+
+  --shadow-xs: 0 1px 2px rgba(24, 28, 32, 0.04);
+  --shadow-sm: 0 4px 12px rgba(24, 28, 32, 0.06);
+  --shadow-md: 0 10px 28px rgba(24, 28, 32, 0.08);
+  --shadow-lg: 0 18px 46px rgba(24, 28, 32, 0.12);
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 30px;
+  --radius-pill: 999px;
+
+  --tap: 44px;
+  --trans: 180ms ease;
+}
+
+/* ---------- Base ---------- */
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top center, rgba(255,255,255,0.75), transparent 34%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 28%, var(--bg) 100%);
+  color: var(--text);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Optional subtle paper texture */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image:
+    radial-gradient(rgba(32,36,43,0.08) 0.45px, transparent 0.55px);
+  background-size: 10px 10px;
+}
+
+/* ---------- Common app shells ---------- */
+
+.app,
+.app-shell,
+.page,
+.screen,
+main {
+  background: transparent;
+  color: var(--text);
+}
+
+header,
+.topbar,
+.app-header,
+.page-header {
+  position: relative;
+  background: rgba(252, 251, 248, 0.72);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(32, 36, 43, 0.05);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.55);
+}
+
+header::after,
+.topbar::after,
+.app-header::after,
+.page-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: rgba(255,255,255,0.65);
+  pointer-events: none;
+}
+
+/* ---------- Typography ---------- */
+
+h1,
+h2,
+h3,
+.app-title,
+.brand,
+.logo {
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.app-title,
+.brand,
+.logo {
+  font-weight: 700;
+}
+
+.subtitle,
+.meta,
+.helper,
+.caption,
+.small,
+.count,
+.secondary-text {
+  color: var(--text-soft);
+}
+
+/* ---------- Icon buttons ---------- */
+
+button,
+.icon-button,
+.toolbar-button,
+.action-button {
+  transition:
+    transform var(--trans),
+    box-shadow var(--trans),
+    background-color var(--trans),
+    border-color var(--trans),
+    color var(--trans);
+}
+
+.icon-button,
+.toolbar-button,
+.action-button {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border-radius: 50%;
+  border: 1px solid transparent;
+  color: var(--text-soft);
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.icon-button:hover,
+.toolbar-button:hover,
+.action-button:hover {
+  background: rgba(255,255,255,0.72);
+  border-color: var(--border);
+  box-shadow: var(--shadow-xs);
+  color: var(--text);
+}
+
+.icon-button:active,
+.toolbar-button:active,
+.action-button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* ---------- Tabs / filters ---------- */
+
+.tabs,
+.tab-row,
+.segmented,
+.filter-row {
+  gap: 10px;
+}
+
+.tab,
+.tab-pill,
+.filter-pill,
+.segment {
+  position: relative;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-soft);
+  border: 1px solid transparent;
+  min-height: 40px;
+  padding: 10px 14px;
+  transition:
+    background-color var(--trans),
+    color var(--trans),
+    border-color var(--trans),
+    box-shadow var(--trans);
+}
+
+.tab:hover,
+.tab-pill:hover,
+.filter-pill:hover,
+.segment:hover {
+  background: rgba(255,255,255,0.55);
+  border-color: rgba(32, 36, 43, 0.05);
+}
+
+.tab.active,
+.tab[aria-selected="true"],
+.tab-pill.active,
+.filter-pill.active,
+.segment.active,
+.segment[aria-pressed="true"] {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.45)),
+    var(--accent-soft);
+  color: var(--text);
+  border-color: rgba(112, 136, 164, 0.20);
+  box-shadow: var(--shadow-xs);
+}
+
+.tab .count,
+.tab-pill .count,
+.filter-pill .count,
+.segment .count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.75);
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+/* ---------- Secondary horizontal chips ---------- */
+
+.chip,
+.pill,
+.week-pill,
+.inline-pill,
+.tag {
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.52);
+  border: 1px solid rgba(32, 36, 43, 0.05);
+  color: var(--text-soft);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
+}
+
+/* ---------- Cards ---------- */
+
+.card,
+.task-card,
+.list-card,
+.item-card,
+.panel,
+section.card {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.18)),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.7),
+    var(--shadow-sm);
+  overflow: hidden;
+}
+
+.card::before,
+.task-card::before,
+.list-card::before,
+.item-card::before,
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.42) 0%,
+    rgba(255,255,255,0.06) 18%,
+    rgba(255,255,255,0) 40%
+  );
+}
+
+.card:hover,
+.task-card:hover,
+.list-card:hover,
+.item-card:hover,
+.panel:hover {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.7),
+    var(--shadow-md);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+/* Remove harsh left status bars if they exist */
+.card::after,
+.task-card::after,
+.list-card::after,
+.item-card::after {
+  border-radius: 0 10px 10px 0;
+}
+
+/* ---------- Task icon / leading badge ---------- */
+
+.leading-icon,
+.task-icon,
+.item-icon,
+.status-icon,
+.check-icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.45)),
+    #edf2ea;
+  border: 1px solid rgba(125, 151, 112, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    0 3px 10px rgba(24, 28, 32, 0.05);
+  color: var(--success);
+}
+
+/* ---------- Card text ---------- */
+
+.card-title,
+.task-title,
+.item-title,
+.list-title {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.card-subtitle,
+.task-subtitle,
+.item-subtitle,
+.remaining,
+.meta-line {
+  color: var(--text-soft);
+}
+
+/* ---------- Inputs / composer ---------- */
+
+input,
+textarea,
+select,
+.input,
+.text-input,
+.composer-input,
+.search-input {
+  background: rgba(255,255,255,0.82);
+  color: var(--text);
+  border: 1px solid rgba(32, 36, 43, 0.08);
+  border-radius: var(--radius-pill);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.75),
+    0 2px 10px rgba(24, 28, 32, 0.03);
+  transition:
+    border-color var(--trans),
+    box-shadow var(--trans),
+    background-color var(--trans);
+}
+
+input::placeholder,
+textarea::placeholder,
+.input::placeholder,
+.composer-input::placeholder {
+  color: var(--text-faint);
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.input:focus,
+.text-input:focus,
+.composer-input:focus,
+.search-input:focus {
+  outline: none;
+  border-color: rgba(112, 136, 164, 0.35);
+  box-shadow:
+    0 0 0 4px rgba(112, 136, 164, 0.12),
+    inset 0 1px 0 rgba(255,255,255,0.75);
+}
+
+/* Bottom composer area */
+.composer,
+.bottom-composer,
+.capture-bar,
+.input-dock,
+footer {
+  background: rgba(248, 246, 242, 0.84);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(32, 36, 43, 0.06);
+  box-shadow: 0 -8px 30px rgba(24, 28, 32, 0.06);
+}
+
+.composer-shell,
+.bottom-dock,
+.input-shell {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.45)),
+    rgba(252, 251, 248, 0.9);
+  border: 1px solid rgba(32, 36, 43, 0.06);
+  border-radius: 28px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.8),
+    var(--shadow-md);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn,
+button.primary,
+.primary-button,
+.cta {
+  background:
+    linear-gradient(180deg, #7d94af 0%, #6f89a4 100%);
+  color: white;
+  border: 1px solid rgba(89, 114, 143, 0.25);
+  border-radius: var(--radius-pill);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.18),
+    0 8px 16px rgba(89, 114, 143, 0.18);
+}
+
+.btn:hover,
+button.primary:hover,
+.primary-button:hover,
+.cta:hover {
+  background:
+    linear-gradient(180deg, #869cb6 0%, #617b98 100%);
+  transform: translateY(-1px);
+}
+
+.btn-secondary,
+button.secondary,
+.secondary-button {
+  background: rgba(255,255,255,0.78);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ---------- Floating action groups ---------- */
+
+.fab,
+.fab-group,
+.quick-actions,
+.bottom-actions {
+  background: rgba(255,255,255,0.64);
+  border: 1px solid rgba(32, 36, 43, 0.06);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* ---------- Dividers ---------- */
+
+hr,
+.divider,
+.list-divider {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(32, 36, 43, 0.08),
+    transparent
+  );
+}
+
+/* ---------- Scroll areas ---------- */
+
+.scroll-area,
+.list,
+.task-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(112, 136, 164, 0.35) transparent;
+}
+
+/* ---------- Utility states ---------- */
+
+.is-muted {
+  color: var(--text-soft);
+}
+
+.is-selected,
+.selected {
+  background: var(--accent-soft);
+}
+
+.is-complete,
+.complete {
+  opacity: 0.92;
+}
+
+.is-complete .card-title,
+.complete .task-title {
+  color: #51605a;
+}
+
+/* ---------- Mobile tuning ---------- */
+
+@media (max-width: 640px) {
+  .card,
+  .task-card,
+  .list-card,
+  .item-card,
+  .panel {
+    border-radius: 22px;
+  }
+
+  .composer-shell,
+  .bottom-dock,
+  .input-shell {
+    border-radius: 24px;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+    scroll-behavior: auto !important;
+  }
+}
