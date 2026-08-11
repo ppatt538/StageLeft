@@ -1,5 +1,5 @@
 /**
- * Daydesk database layer — PostgreSQL via Drizzle ORM.
+ * StageLeft database layer — PostgreSQL via Drizzle ORM.
  *
  * Why PostgreSQL instead of the previous better-sqlite3:
  * Replit autoscale deployments run in ephemeral containers whose local
@@ -208,7 +208,7 @@ export async function ensureSeeded(): Promise<void> {
       bucket: "week", status: "active", priority: 0,
       tags: JSON.stringify(["planning"]),
       payload: JSON.stringify({ items: [
-        { id: "w1", text: "Ship Phase 1 of Daydesk",    done: true  },
+        { id: "w1", text: "Ship Phase 1 of StageLeft",   done: true  },
         { id: "w2", text: "Prep Q3 review deck",        done: false },
         { id: "w3", text: "Interview two candidates",   done: false },
       ]}),

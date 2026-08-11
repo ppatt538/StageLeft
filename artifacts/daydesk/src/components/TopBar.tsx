@@ -47,7 +47,7 @@ export function TopBar({ searchQuery, onSearchChange, onHistoryOpen, onApiTokens
       <div className="flex h-12 md:h-14 items-center px-4 md:px-6 gap-3 md:gap-4">
         {!searchOpen && (
           <div className="font-bold text-[17px] md:text-lg text-foreground tracking-[-0.4px] whitespace-nowrap">
-            Daydesk
+            StageLeft
           </div>
         )}
 

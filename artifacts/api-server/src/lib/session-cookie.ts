@@ -62,7 +62,7 @@ export function requireSessionCookie(
   const value = cookies?.[COOKIE_NAME];
   if (!value || value !== COOKIE_VALUE) {
     res.status(401).json({
-      error: "Open Daydesk in your browser first — session required for token management",
+      error: "Open StageLeft in your browser first — session required for token management",
     });
     return;
   }

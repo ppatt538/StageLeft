@@ -241,7 +241,7 @@ export function ChatComposer({ onCardCreated }: ChatComposerProps) {
     ? 'Listening…'
     : attachments.length > 0
       ? 'Add a note about this image...'
-      : 'Tell Daydesk what to capture...';
+      : 'Tell StageLeft what to capture...';
 
   return (
     <div

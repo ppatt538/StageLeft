@@ -25,7 +25,7 @@ const EMPTY_STATES: Record<ObjectBucket, { emoji: string; heading: string; sub: 
   today: {
     emoji: '☀️',
     heading: 'Your day is a blank slate',
-    sub: 'Tell Daydesk what to capture — a task, note, reminder, or link.',
+    sub: 'Tell StageLeft what to capture — a task, note, reminder, or link.',
   },
   week: {
     emoji: '📅',

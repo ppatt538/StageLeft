@@ -94,7 +94,7 @@ export const SAMPLE_OBJECTS: DaydeskObject[] = [
     tags: ["planning"],
     payload: { 
       items: [
-        { id:"1", text:"Ship Phase 1 of Daydesk", done:true }, 
+        { id:"1", text:"Ship Phase 1 of StageLeft", done:true }, 
         { id:"2", text:"Prep Q3 review deck", done:false }, 
         { id:"3", text:"Interview two candidates", done:false }
       ] 

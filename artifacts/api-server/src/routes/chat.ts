@@ -15,7 +15,7 @@ const router: IRouter = Router();
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are Daydesk — a personal AI temporal desktop assistant.
+const SYSTEM_PROMPT = `You are StageLeft — a personal AI temporal desktop assistant.
 The user captures things by talking to you (tasks, notes, reminders, links, events, media).
 Your job is to understand what they want and produce a JSON response that creates or modifies cards.
 

@@ -1,9 +1,9 @@
 /**
- * Internal token management routes — callable only by the Daydesk browser UI.
+ * Internal token management routes — callable only by the StageLeft browser UI.
  *
  * All routes require a valid session cookie (set automatically by the app on
  * every API response). This ensures that only a browser that has previously
- * loaded the Daydesk app can manage tokens — curl and cross-origin scripts
+ * loaded the StageLeft app can manage tokens — curl and cross-origin scripts
  * cannot satisfy the SameSite=Strict cookie requirement.
  *
  * GET    /tokens          list all tokens (id, name, scopes, dates — no hash)
