@@ -105,27 +105,33 @@ function NotesField({
 export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }: CardDetailProps) {
   // Local draft — synced from prop when card identity changes
   const [draft, setDraft] = useState<DaydeskObject | null>(null);
+  const draftRef = useRef<DaydeskObject | null>(null);
   const pendingRef = useRef(false);
 
   useEffect(() => {
     if (card) {
-      setDraft(JSON.parse(JSON.stringify(card))); // deep clone
+      const nextDraft = JSON.parse(JSON.stringify(card)) as DaydeskObject;
+      setDraft(nextDraft);
+      draftRef.current = nextDraft;
       pendingRef.current = false;
     }
   }, [card?.id]);
 
   const save = useCallback(() => {
-    if (draft && pendingRef.current) {
-      onUpdateCard(draft);
+    const latestDraft = draftRef.current;
+    if (latestDraft && pendingRef.current) {
+      onUpdateCard(latestDraft);
       pendingRef.current = false;
     }
-  }, [draft, onUpdateCard]);
+  }, [onUpdateCard]);
 
   const patch = useCallback((updates: Partial<DaydeskObject>) => {
     setDraft((prev) => {
       if (!prev) return prev;
       pendingRef.current = true;
-      return { ...prev, ...updates };
+      const nextDraft = { ...prev, ...updates };
+      draftRef.current = nextDraft;
+      return nextDraft;
     });
   }, []);
 
@@ -133,7 +139,9 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
     setDraft((prev) => {
       if (!prev) return prev;
       pendingRef.current = true;
-      return { ...prev, payload: { ...prev.payload, ...payloadUpdates } };
+      const nextDraft = { ...prev, payload: { ...prev.payload, ...payloadUpdates } };
+      draftRef.current = nextDraft;
+      return nextDraft;
     });
   }, []);
 
@@ -266,6 +274,7 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
 
               <button
                 onClick={() => { save(); onClose(); }}
+                aria-label="Close card"
                 className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground"
               >
                 <X className="w-5 h-5" />
@@ -304,24 +313,26 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
                 {draft.type === 'checklist' && (
                   <div className="flex flex-col gap-1">
                     {items.map((item) => (
-                      <div key={item.id} className="flex items-start gap-2 group py-1">
-                        <GripVertical className="w-4 h-4 text-muted-foreground/30 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 cursor-grab transition-opacity" />
+                      <div key={item.id} className="flex items-start gap-3 group min-h-12 py-2 md:min-h-0 md:py-1">
+                        <GripVertical className="w-4 h-4 text-muted-foreground/30 mt-1 flex-shrink-0 opacity-0 group-hover:opacity-100 cursor-grab transition-opacity hidden md:block" />
                         <input
                           type="checkbox"
                           checked={item.done}
                           onChange={() => { updateItem(item.id, { done: !item.done }); save(); }}
-                          className="mt-1 flex-shrink-0 w-4 h-4 rounded border-border/80 text-primary cursor-pointer"
+                          aria-label={`${item.done ? 'Mark incomplete' : 'Mark complete'}: ${item.text || 'Untitled item'}`}
+                          className="mt-1.5 flex-shrink-0 w-6 h-6 md:w-4 md:h-4 rounded-md border-border/80 text-primary cursor-pointer accent-primary focus-visible:ring-2 focus-visible:ring-primary/30"
                         />
                         <InlineText
                           value={item.text}
                           onChange={(v) => updateItem(item.id, { text: v })}
                           onBlur={save}
-                          className={cn('flex-1 text-sm leading-relaxed pt-0.5', item.done && 'line-through text-muted-foreground')}
+                          className={cn('flex-1 min-w-0 text-[15px] leading-6 md:text-sm md:leading-relaxed pt-0.5', item.done && 'line-through text-muted-foreground')}
                           placeholder="Item text"
                         />
                         <button
                           onClick={() => { removeItem(item.id); save(); }}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground/50 hover:text-red-400 transition-all flex-shrink-0"
+                          aria-label={`Remove ${item.text || 'untitled item'}`}
+                          className="flex items-center justify-center w-10 h-10 -mr-1 -mt-1 text-muted-foreground/60 hover:text-red-400 active:text-red-500 md:opacity-0 md:group-hover:opacity-100 transition-all flex-shrink-0"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -329,7 +340,8 @@ export function CardDetail({ card, isOpen, onClose, onUpdateCard, onDeleteCard }
                     ))}
                     <button
                       onClick={addItem}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mt-1 py-1 transition-colors"
+                      className="flex items-center gap-2 min-h-11 px-2 rounded-lg text-sm text-muted-foreground hover:text-foreground active:bg-muted/60 mt-1 transition-colors touch-manipulation"
+                      aria-label="Add checklist item"
                     >
                       <Plus className="w-4 h-4" />
                       Add item

@@ -13,6 +13,7 @@ export interface DaydeskObject {
   bucket: ObjectBucket;
   status: ObjectStatus;
   priority: number;
+  sort_order: number;
   tags: string[];
   layout?: ObjectLayout | null;
   payload: Record<string, any>;

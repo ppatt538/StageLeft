@@ -64,6 +64,33 @@ paths:
                 items:
                   $ref: "#/components/schemas/DaydeskObject"
 
+  /objects/reorder:
+    put:
+      operationId: reorderObjects
+      tags: [objects]
+      summary: Reorder objects within a bucket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ObjectOrderInput"
+      responses:
+        "200":
+          description: Objects in their persisted order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DaydeskObject"
+        "400":
+          description: Invalid or incomplete order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /objects/{id}:
     get:
       operationId: getObject
@@ -322,6 +349,8 @@ components:
           $ref: "#/components/schemas/ObjectStatus"
         priority:
           type: number
+        sort_order:
+          type: number
         tags:
           type: array
           items:
@@ -363,6 +392,7 @@ components:
         - bucket
         - status
         - priority
+        - sort_order
         - tags
         - payload
         - source
@@ -383,6 +413,8 @@ components:
           $ref: "#/components/schemas/ObjectStatus"
         priority:
           type: number
+        pinned:
+          type: boolean
         tags:
           type: array
           items:
@@ -397,6 +429,22 @@ components:
           type: ["string", "null"]
         snooze_until:
           type: ["string", "null"]
+
+    ObjectOrderInput:
+      type: object
+      properties:
+        bucket:
+          type: string
+          enum: [today]
+        ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+      required:
+        - bucket
+        - ids
 
     ChatInput:
       type: object

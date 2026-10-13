@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { DaydeskObject } from '../types/daydesk';
 import { ChecklistCard } from './cards/ChecklistCard';
 import { NoteCard } from './cards/NoteCard';
@@ -6,14 +6,14 @@ import { ReminderCard } from './cards/ReminderCard';
 import { LinkCard } from './cards/LinkCard';
 import { MediaCard } from './cards/MediaCard';
 import {
-  motion, AnimatePresence,
+  motion, AnimatePresence, Reorder,
   useMotionValue, useTransform,
-  animate as motionAnimate,
+  animate as motionAnimate, useDragControls,
 } from 'framer-motion';
 import {
   CheckSquare, AlignLeft, Clock, Link as LinkIcon,
   Image as ImageIcon, ChevronRight,
-  CalendarDays, Pin, Trash2, Pencil, Sun,
+  CalendarDays, Pin, Trash2, Pencil, Sun, GripVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,8 @@ export interface CardListProps {
   onMoveCard?: (id: string, updates: { bucket?: string; status?: string; priority?: number }) => void;
   onDeleteCard?: (id: string) => void;
   onOpenCard?: (card: DaydeskObject) => void;
+  reorderEnabled?: boolean;
+  onReorderCards?: (orderedIds: string[]) => void;
 }
 
 // ─── Per-type icon + colour config ───────────────────────────────────────────
@@ -103,12 +105,15 @@ interface SwipeableCardProps {
   onMoveCard?: (id: string, updates: { bucket?: string; status?: string; priority?: number }) => void;
   onDeleteCard?: (id: string) => void;
   onOpenCard?: (card: DaydeskObject) => void;
+  reorderHandle?: React.ReactNode;
+  isReordering?: boolean;
 }
 
 function SwipeableCard({
   card, isExpanded, onToggleExpand,
   openSwipeId, onSetOpenSwipe,
   onUpdateCard, onMoveCard, onDeleteCard, onOpenCard,
+  reorderHandle, isReordering = false,
 }: SwipeableCardProps) {
   const x = useMotionValue(0);
 
@@ -248,7 +253,7 @@ function SwipeableCard({
   // ── Row tap ───────────────────────────────────────────────────────────────
 
   const handleRowClick = () => {
-    if (hasDragged.current || longPressFired.current) return;
+    if (isReordering || hasDragged.current || longPressFired.current) return;
     if (x.get() !== 0) { snapBack(); return; }
     onToggleExpand();
   };
@@ -317,7 +322,7 @@ function SwipeableCard({
       {/* Draggable card surface */}
       <motion.div
         style={{ x }}
-        drag={isExpanded ? false : 'x'}
+        drag={isExpanded || isReordering ? false : 'x'}
         dragConstraints={{ left: -LEFT_STRIP_W, right: RIGHT_STRIP_W }}
         dragElastic={{ left: 0.04, right: 0.04 }}
         dragDirectionLock
@@ -355,6 +360,8 @@ function SwipeableCard({
               </p>
             )}
           </div>
+
+          {reorderHandle}
 
           <motion.div
             animate={{ rotate: isExpanded ? 90 : 0 }}
@@ -402,32 +409,244 @@ function SwipeableCard({
   );
 }
 
-// ─── CardList ─────────────────────────────────────────────────────────────────
+// ─── Reorderable wrapper ──────────────────────────────────────────────────────
 
-export function CardList({ cards, onUpdateCard, onMoveCard, onDeleteCard, onOpenCard }: CardListProps) {
-  const [expandedId,  setExpandedId]  = useState<string | null>(null);
-  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+interface ReorderableSwipeableCardProps extends SwipeableCardProps {
+  onReorderStart: () => void;
+  onReorderEnd: () => void;
+  onMoveBy: (offset: -1 | 1) => void;
+  position: number;
+  total: number;
+}
+
+function ReorderableSwipeableCard({
+  onReorderStart,
+  onReorderEnd,
+  onMoveBy,
+  position,
+  total,
+  ...cardProps
+}: ReorderableSwipeableCardProps) {
+  const dragControls = useDragControls();
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
+
+  const cancelHold = () => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+    pointerStart.current = null;
+  };
+
+  useEffect(() => cancelHold, []);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    event.stopPropagation();
+    pointerStart.current = { x: event.clientX, y: event.clientY };
+    const dragEvent = event;
+
+    holdTimer.current = setTimeout(() => {
+      holdTimer.current = null;
+      pointerStart.current = null;
+      setIsReordering(true);
+      onReorderStart();
+      dragControls.start(dragEvent, { snapToCursor: false });
+    }, 360);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const start = pointerStart.current;
+    if (!start) return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) {
+      cancelHold();
+    }
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    event.stopPropagation();
+    onMoveBy(event.key === 'ArrowUp' ? -1 : 1);
+  };
 
   return (
-    <div
-      className="flex flex-col space-y-2 pb-8"
-      // Tapping the container background closes any open strip
-      onClick={() => { if (openSwipeId) setOpenSwipeId(null); }}
+    <Reorder.Item
+      as="div"
+      value={cardProps.card.id}
+      dragListener={false}
+      dragControls={dragControls}
+      dragElastic={0.08}
+      onDragEnd={() => {
+        setIsReordering(false);
+        onReorderEnd();
+      }}
+      whileDrag={{
+        scale: 1.018,
+        zIndex: 20,
+        boxShadow: '0 14px 32px rgba(0, 0, 0, 0.16)',
+      }}
+      className="relative"
     >
-      {cards.map((card) => (
-        <SwipeableCard
-          key={card.id}
-          card={card}
-          isExpanded={expandedId === card.id}
-          onToggleExpand={() => setExpandedId(expandedId === card.id ? null : card.id)}
-          openSwipeId={openSwipeId}
-          onSetOpenSwipe={setOpenSwipeId}
-          onUpdateCard={onUpdateCard}
-          onMoveCard={onMoveCard}
-          onDeleteCard={onDeleteCard}
-          onOpenCard={onOpenCard}
-        />
-      ))}
-    </div>
+      <SwipeableCard
+        {...cardProps}
+        isReordering={isReordering}
+        reorderHandle={(
+          <button
+            type="button"
+            aria-label={`Reorder ${cardProps.card.title}. Position ${position + 1} of ${total}. Hold and drag, or use the up and down arrow keys.`}
+            disabled={total < 2}
+            title="Hold and drag to reorder"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={cancelHold}
+            onPointerCancel={cancelHold}
+            onContextMenu={(event) => event.preventDefault()}
+            onKeyDown={handleKeyDown}
+            onClick={(event) => event.stopPropagation()}
+            className={cn(
+              'mr-0.5 flex h-10 w-9 flex-shrink-0 touch-none items-center justify-center rounded-xl',
+              'border border-border/70 bg-muted/55 text-muted-foreground/85 shadow-sm transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+              isReordering
+                ? 'cursor-grabbing border-primary/30 bg-primary/10 text-primary'
+                : 'cursor-grab active:bg-muted active:text-foreground',
+              total < 2 && 'cursor-default opacity-55',
+            )}
+          >
+            <GripVertical className="h-5 w-5" />
+          </button>
+        )}
+      />
+    </Reorder.Item>
+  );
+}
+
+// ─── CardList ─────────────────────────────────────────────────────────────────
+
+export function CardList({
+  cards,
+  onUpdateCard,
+  onMoveCard,
+  onDeleteCard,
+  onOpenCard,
+  reorderEnabled = false,
+  onReorderCards,
+}: CardListProps) {
+  const [expandedId,  setExpandedId]  = useState<string | null>(null);
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
+
+  const incomingIds = useMemo(() => {
+    const sourceIndex = new Map(cards.map((card, index) => [card.id, index]));
+    const ordered = reorderEnabled
+      ? [...cards].sort(
+          (a, b) =>
+            a.sort_order - b.sort_order ||
+            (sourceIndex.get(a.id) ?? 0) - (sourceIndex.get(b.id) ?? 0),
+        )
+      : cards;
+    return ordered.map((card) => card.id);
+  }, [cards, reorderEnabled]);
+  const incomingSignature = incomingIds.join('\u0000');
+  const [orderedIds, setOrderedIds] = useState(incomingIds);
+  const orderedIdsRef = useRef(incomingIds);
+
+  useEffect(() => {
+    setOrderedIds(incomingIds);
+    orderedIdsRef.current = incomingIds;
+  }, [incomingSignature]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const cardsById = useMemo(
+    () => new Map(cards.map((card) => [card.id, card])),
+    [cards],
+  );
+  const orderedCards = orderedIds
+    .map((id) => cardsById.get(id))
+    .filter((card): card is DaydeskObject => Boolean(card));
+
+  const applyOrder = (ids: string[]) => {
+    orderedIdsRef.current = ids;
+    setOrderedIds(ids);
+  };
+
+  const persistOrder = (ids = orderedIdsRef.current) => {
+    onReorderCards?.(ids);
+  };
+
+  const moveCardBy = (id: string, offset: -1 | 1) => {
+    const from = orderedIdsRef.current.indexOf(id);
+    const to = from + offset;
+    if (from < 0 || to < 0 || to >= orderedIdsRef.current.length) return;
+    const next = [...orderedIdsRef.current];
+    [next[from], next[to]] = [next[to], next[from]];
+    applyOrder(next);
+    persistOrder(next);
+    const card = cardsById.get(id);
+    setAnnouncement(`${card?.title ?? 'Card'} moved to position ${to + 1}`);
+  };
+
+  const cardProps = (card: DaydeskObject): SwipeableCardProps => ({
+    card,
+    isExpanded: expandedId === card.id,
+    onToggleExpand: () => setExpandedId(expandedId === card.id ? null : card.id),
+    openSwipeId,
+    onSetOpenSwipe: setOpenSwipeId,
+    onUpdateCard,
+    onMoveCard,
+    onDeleteCard,
+    onOpenCard,
+  });
+
+  const listContent = orderedCards.map((card, index) => (
+    reorderEnabled ? (
+      <ReorderableSwipeableCard
+        key={card.id}
+        {...cardProps(card)}
+        position={index}
+        total={orderedCards.length}
+        onReorderStart={() => {
+          setExpandedId(null);
+          setOpenSwipeId(null);
+        }}
+        onReorderEnd={() => {
+          persistOrder();
+          const position = orderedIdsRef.current.indexOf(card.id);
+          setAnnouncement(`${card.title} moved to position ${position + 1}`);
+        }}
+        onMoveBy={(offset) => moveCardBy(card.id, offset)}
+      />
+    ) : (
+      <SwipeableCard key={card.id} {...cardProps(card)} />
+    )
+  ));
+
+  return (
+    <>
+      {reorderEnabled ? (
+        <Reorder.Group
+          as="div"
+          axis="y"
+          values={orderedIds}
+          onReorder={applyOrder}
+          className="flex flex-col space-y-2 pb-8"
+          onClick={() => { if (openSwipeId) setOpenSwipeId(null); }}
+        >
+          {listContent}
+        </Reorder.Group>
+      ) : (
+        <div
+          className="flex flex-col space-y-2 pb-8"
+          onClick={() => { if (openSwipeId) setOpenSwipeId(null); }}
+        >
+          {listContent}
+        </div>
+      )}
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </p>
+    </>
   );
 }

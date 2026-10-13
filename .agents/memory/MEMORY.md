@@ -1,2 +1,0 @@
-- [PostgreSQL migration](pg-migration.md) — SQLite → PostgreSQL completed; autoscale containers are ephemeral, all Daydesk data must live in managed pg.
-- [Deployment password wall](deployment-password-wall.md) — password-visibility deployments 307-redirect ALL requests incl. API; check visibility before debugging external-caller timeouts.

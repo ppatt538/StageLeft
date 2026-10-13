@@ -1,10 +1,11 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useTheme } from '../hooks/use-theme';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListObjects,
   getListObjectsQueryKey,
   useUpdateObject,
+  useReorderObjects,
 } from '@workspace/api-client-react';
 import { TopBar } from '../components/TopBar';
 import { TabBar } from '../components/TabBar';
@@ -17,6 +18,7 @@ import { ApiTokens } from '../components/ApiTokens';
 import { AgendaPanel, countOverdueAgendaItems } from '../components/AgendaPanel';
 import { AgendaRibbon } from '../components/AgendaRibbon';
 import { ObjectBucket, DaydeskObject } from '../types/daydesk';
+import { buildCardUpdateData } from '../lib/card-update';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // ─── Per-bucket empty states ──────────────────────────────────────────────────
@@ -93,6 +95,9 @@ export function DeskPage() {
   });
 
   const updateObject = useUpdateObject();
+  const reorderObjects = useReorderObjects();
+  const queuedOrderRef = useRef<string[] | null>(null);
+  const isSavingOrderRef = useRef(false);
 
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: getListObjectsQueryKey({ bucket: 'all' }) });
@@ -120,21 +125,38 @@ export function DeskPage() {
       updateObject.mutate(
         {
           id: updatedCard.id,
-          data: {
-            title:        updatedCard.title,
-            bucket:       updatedCard.bucket,
-            status:       updatedCard.status,
-            priority:     updatedCard.priority,
-            tags:         updatedCard.tags,
-            payload:      updatedCard.payload as Record<string, unknown>,
-            notes:        updatedCard.notes ?? null,
-            snooze_until: updatedCard.snooze_until ?? null,
-          },
+          data: buildCardUpdateData(updatedCard),
         },
         { onSuccess: invalidateAll },
       );
     },
     [updateObject, invalidateAll],
+  );
+
+  const handleReorderCards = useCallback(
+    (ids: string[]) => {
+      queuedOrderRef.current = ids;
+      if (isSavingOrderRef.current) return;
+
+      isSavingOrderRef.current = true;
+      void (async () => {
+        try {
+          while (queuedOrderRef.current) {
+            const nextOrder = queuedOrderRef.current;
+            queuedOrderRef.current = null;
+            await reorderObjects.mutateAsync({
+              data: { bucket: 'today', ids: nextOrder },
+            });
+          }
+        } catch {
+          queuedOrderRef.current = null;
+        } finally {
+          isSavingOrderRef.current = false;
+          invalidateAll();
+        }
+      })();
+    },
+    [reorderObjects, invalidateAll],
   );
 
   // Clear search when the user switches tabs
@@ -251,6 +273,8 @@ export function DeskPage() {
                     );
                   }}
                   onOpenCard={(card) => setSelectedCardId(card.id)}
+                  reorderEnabled={activeTab === 'today' && !searchQuery}
+                  onReorderCards={handleReorderCards}
                 />
               </div>
             </>
@@ -266,17 +290,7 @@ export function DeskPage() {
         onClose={() => setSelectedCardId(null)}
         onUpdateCard={(card) => {
           updateObject.mutate(
-            {
-              id: card.id,
-              data: {
-                title: card.title,
-                bucket: card.bucket as 'today' | 'week' | 'archive',
-                status: card.status as 'active' | 'done' | 'snoozed' | 'discarded',
-                priority: card.priority,
-                tags: card.tags as string[],
-                payload: card.payload as Record<string, unknown>,
-              },
-            },
+            { id: card.id, data: buildCardUpdateData(card) },
             { onSuccess: invalidateAll },
           );
         }}

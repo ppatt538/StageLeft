@@ -16,6 +16,7 @@ export const daydeskObjects = pgTable(
     bucket:          text("bucket").notNull().default("today"),
     status:          text("status").notNull().default("active"),
     priority:        integer("priority").notNull().default(0),
+    sort_order:      integer("sort_order").notNull().default(0),
     tags:            text("tags").notNull().default("[]"),
     layout:          text("layout"),
     payload:         text("payload").notNull().default("{}"),
@@ -32,6 +33,7 @@ export const daydeskObjects = pgTable(
   },
   (t) => [
     index("idx_daydesk_objects_bucket").on(t.bucket),
+    index("idx_daydesk_objects_bucket_sort_order").on(t.bucket, t.sort_order),
     index("idx_daydesk_objects_status").on(t.status),
     index("idx_daydesk_objects_updated_at").on(t.updated_at),
   ],

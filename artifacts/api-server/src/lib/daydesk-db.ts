@@ -46,6 +46,7 @@ export type DaydeskObject = {
   bucket: string;
   status: string;
   priority: number;
+  sort_order: number;
   tags: unknown[];
   layout: unknown | null;
   payload: Record<string, unknown>;
@@ -119,6 +120,35 @@ export async function ensureMigrations(): Promise<void> {
     sql`ALTER TABLE daydesk_objects ADD COLUMN IF NOT EXISTS notes TEXT`,
   );
 
+  // Migration: establish a stable, user-controlled order within each bucket.
+  // Existing rows keep the order users already saw: pinned first, then most
+  // recently updated. Only rows without an assigned order are backfilled.
+  await db.execute(
+    sql`ALTER TABLE daydesk_objects ADD COLUMN IF NOT EXISTS sort_order INTEGER`,
+  );
+  await db.execute(sql`
+    WITH ranked AS (
+      SELECT
+        id,
+        ROW_NUMBER() OVER (
+          PARTITION BY bucket
+          ORDER BY priority DESC, updated_at DESC, id
+        ) - 1 AS position
+      FROM daydesk_objects
+      WHERE sort_order IS NULL
+    )
+    UPDATE daydesk_objects AS objects
+    SET sort_order = ranked.position
+    FROM ranked
+    WHERE objects.id = ranked.id
+  `);
+  await db.execute(
+    sql`ALTER TABLE daydesk_objects ALTER COLUMN sort_order SET DEFAULT 0`,
+  );
+  await db.execute(
+    sql`ALTER TABLE daydesk_objects ALTER COLUMN sort_order SET NOT NULL`,
+  );
+
   // Migration: legacy bucket='pinned' → bucket='today' with priority=1.
   // Pin is now represented by priority=1 within today/week/archive.
   const now = new Date().toISOString();
@@ -147,7 +177,7 @@ export async function ensureSeeded(): Promise<void> {
 
   const now = new Date().toISOString();
 
-  const seeds: Omit<ObjectRow, "layout" | "ai" | "snooze_until" | "completed_at" | "notes">[] = [
+  const seeds: Omit<ObjectRow, "layout" | "ai" | "snooze_until" | "completed_at" | "notes" | "sort_order">[] = [
     {
       id: nanoid(), type: "checklist", title: "Today's tasks",
       bucket: "today", status: "active", priority: 0,
@@ -219,7 +249,20 @@ export async function ensureSeeded(): Promise<void> {
     },
   ];
 
+  const nextOrderByBucket = new Map<string, number>();
   await db.insert(daydeskObjects).values(
-    seeds.map((s) => ({ ...s, layout: null, ai: null, snooze_until: null, completed_at: null, notes: null })),
+    seeds.map((s) => {
+      const sort_order = nextOrderByBucket.get(s.bucket) ?? 0;
+      nextOrderByBucket.set(s.bucket, sort_order + 1);
+      return {
+        ...s,
+        sort_order,
+        layout: null,
+        ai: null,
+        snooze_until: null,
+        completed_at: null,
+        notes: null,
+      };
+    }),
   );
 }

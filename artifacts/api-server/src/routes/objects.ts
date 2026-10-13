@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { nanoid } from "nanoid";
 import {
   db, daydeskObjects, rowToObject, buildSearchText,
-  eq, ne, and, or, ilike, desc, sql,
+  eq, ne, and, or, ilike, desc, asc, inArray, sql,
   type ObjectRow,
 } from "../lib/daydesk-db";
 import { maybeRollover } from "../lib/rollover";
@@ -11,6 +11,7 @@ import {
   GetObjectParams,      GetObjectResponse,
   UpdateObjectParams,   UpdateObjectBody, UpdateObjectResponse,
   DeleteObjectParams,   DeleteObjectResponse,
+  ReorderObjectsBody,   ReorderObjectsResponse,
 } from "@workspace/api-zod";
 import { requireBearerToken } from "../lib/api-tokens";
 
@@ -43,6 +44,54 @@ router.get("/objects", requireBearerToken("read"), async (req, res): Promise<voi
     .orderBy(desc(daydeskObjects.priority), desc(daydeskObjects.updated_at));
 
   res.json(ListObjectsResponse.parse(rows.map(rowToObject)));
+});
+
+// ─── PUT /objects/reorder ─────────────────────────────────────────────────────
+
+router.put("/objects/reorder", async (req, res): Promise<void> => {
+  const body = ReorderObjectsBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const { bucket, ids } = body.data;
+  const rows = await db
+    .select({ id: daydeskObjects.id })
+    .from(daydeskObjects)
+    .where(and(
+      eq(daydeskObjects.bucket, bucket),
+      ne(daydeskObjects.status, "discarded"),
+    ));
+
+  const currentIds = new Set(rows.map((row) => row.id));
+  if (ids.length !== currentIds.size || ids.some((id) => !currentIds.has(id))) {
+    res.status(400).json({
+      error: "The order must include every visible card in the bucket exactly once",
+    });
+    return;
+  }
+
+  const reordered = await db.transaction(async (tx) => {
+    for (const [sort_order, id] of ids.entries()) {
+      await tx
+        .update(daydeskObjects)
+        .set({ sort_order })
+        .where(and(
+          eq(daydeskObjects.id, id),
+          eq(daydeskObjects.bucket, bucket),
+          ne(daydeskObjects.status, "discarded"),
+        ));
+    }
+
+    return tx
+      .select()
+      .from(daydeskObjects)
+      .where(inArray(daydeskObjects.id, ids))
+      .orderBy(asc(daydeskObjects.sort_order));
+  });
+
+  res.json(ReorderObjectsResponse.parse(reordered.map(rowToObject)));
 });
 
 // ─── GET /objects/:id ─────────────────────────────────────────────────────────
@@ -99,6 +148,21 @@ router.patch("/objects/:id", async (req, res): Promise<void> => {
         ? (patch.pinned ? 1 : 0)
         : existing.priority;
 
+  const nextBucket = patch.bucket ?? existing.bucket;
+  let nextSortOrder = existing.sort_order;
+  if (nextBucket !== existing.bucket) {
+    const [{ value }] = await db
+      .select({
+        value: sql<number>`COALESCE(MAX(${daydeskObjects.sort_order}), -1) + 1`,
+      })
+      .from(daydeskObjects)
+      .where(and(
+        eq(daydeskObjects.bucket, nextBucket),
+        ne(daydeskObjects.status, "discarded"),
+      ));
+    nextSortOrder = Number(value);
+  }
+
   const [updated] = await db
     .update(daydeskObjects)
     .set({
@@ -106,6 +170,7 @@ router.patch("/objects/:id", async (req, res): Promise<void> => {
       bucket:          patch.bucket   ?? existing.bucket,
       status:          patch.status   ?? existing.status,
       priority:        newPriority,
+      sort_order:      nextSortOrder,
       tags:            patch.tags     ? JSON.stringify(patch.tags) : existing.tags,
       layout:          patch.layout !== undefined
                          ? (patch.layout ? JSON.stringify(patch.layout) : null)

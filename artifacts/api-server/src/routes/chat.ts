@@ -4,7 +4,7 @@ import {
   db,
   daydeskObjects, daydeskMessages, daydeskMedia, daydeskUndoLog,
   rowToObject, buildSearchText,
-  eq, ne, desc, inArray,
+  eq, ne, and, desc, inArray, sql,
   type ObjectRow,
 } from "../lib/daydesk-db";
 import { SendChatBody, SendChatResponse } from "@workspace/api-zod";
@@ -140,6 +140,18 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
 
   return db.transaction(async (tx) => {
     const changed: ObjectRow[] = [];
+    const getNextSortOrder = async (bucket: string): Promise<number> => {
+      const [{ value }] = await tx
+        .select({
+          value: sql<number>`COALESCE(MAX(${daydeskObjects.sort_order}), -1) + 1`,
+        })
+        .from(daydeskObjects)
+        .where(and(
+          eq(daydeskObjects.bucket, bucket),
+          ne(daydeskObjects.status, "discarded"),
+        ));
+      return Number(value);
+    };
 
     for (const op of ops) {
       // ── create ────────────────────────────────────────────────────────────
@@ -147,13 +159,16 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
         const id      = nanoid();
         const payload = op.payload ?? {};
         const notes   = op.notes ?? null;
+        const bucket  = op.bucket ?? "today";
+        const sortOrder = await getNextSortOrder(bucket);
         const [row]   = await tx
           .insert(daydeskObjects)
           .values({
             id, type: op.type, title: op.title,
-            bucket:          op.bucket  ?? "today",
+            bucket,
             status:          "active",
             priority:        op.priority ?? 0,
+            sort_order:      sortOrder,
             tags:            JSON.stringify(op.tags  ?? []),
             payload:         JSON.stringify(payload),
             notes,
@@ -224,6 +239,10 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
         }
         const newTitle = op.title ?? existing.title;
         const newNotes = op.notes !== undefined ? op.notes : existing.notes;
+        const nextBucket = op.bucket ?? existing.bucket;
+        const nextSortOrder = nextBucket !== existing.bucket
+          ? await getNextSortOrder(nextBucket)
+          : existing.sort_order;
         let completedAt = existing.completed_at;
         if (op.status === "done" && !completedAt) completedAt = now;
         if (op.status && op.status !== "done") completedAt = null;
@@ -231,8 +250,9 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
         const [row] = await tx
           .update(daydeskObjects)
           .set({
-            title: newTitle, bucket: op.bucket ?? existing.bucket,
+            title: newTitle, bucket: nextBucket,
             status: op.status ?? existing.status, priority: op.priority ?? existing.priority,
+            sort_order: nextSortOrder,
             payload: JSON.stringify(newPayload),
             notes: newNotes,
             search_text: buildSearchText(newTitle, newPayload, newNotes),
@@ -264,6 +284,9 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
       // ── move ──────────────────────────────────────────────────────────────
       } else if (op.op === "move") {
         const [existing] = await tx.select().from(daydeskObjects).where(eq(daydeskObjects.id, op.id));
+        const nextSortOrder = existing && existing.bucket !== op.bucket
+          ? await getNextSortOrder(op.bucket)
+          : existing?.sort_order;
         if (existing) {
           await tx.insert(daydeskUndoLog).values({
             id: nanoid(), message_id: messageId, object_id: op.id,
@@ -273,7 +296,12 @@ async function applyOps(ops: Op[], messageId: string): Promise<ObjectRow[]> {
 
         const [row] = await tx
           .update(daydeskObjects)
-          .set({ bucket: op.bucket, updated_at: now, last_touched_at: now })
+          .set({
+            bucket: op.bucket,
+            ...(nextSortOrder !== undefined && { sort_order: nextSortOrder }),
+            updated_at: now,
+            last_touched_at: now,
+          })
           .where(eq(daydeskObjects.id, op.id))
           .returning();
 
